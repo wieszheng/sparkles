@@ -17,7 +17,24 @@ import {
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import { ScreenMirror } from "@/components/ScreenMirror";
 import { Route, Routes } from "react-router-dom";
-import { Minus, Square, X } from "lucide-react";
+import { FolderPlus, Minus, Square, X, Cog } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Toaster } from "@/components/ui/sonner";
+import { Api } from "@/apis";
+import { toast } from "sonner";
+import { Toolbar } from "@/components/Toolbar.tsx";
 
 function AIAnalysisPage() {
   return null;
@@ -40,6 +57,41 @@ function Main() {
   // 设备状态管理
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    description: "",
+    team: "",
+    tags: "",
+  });
+
+  const [showToolSettings, setShowToolSettings] = useState(false);
+  const [toolSettings, setToolSettings] = useState({
+    screenshotFormat: "PNG",
+    saveLocation: "/screenshots",
+  });
+
+  // 加载工具设置
+  useEffect(() => {
+    const loadToolSettings = async () => {
+      const data = await window.api.getToolSettings();
+      if (data) {
+        setToolSettings(data);
+      }
+    };
+    loadToolSettings();
+  }, []);
+
+  // 保存工具设置
+  const saveToolSettings = async () => {
+    const result = await window.api.setToolSettings(toolSettings);
+    if (result.success) {
+      setToolSettings((prev) => ({ ...prev, ...toolSettings }));
+      toast.success("工具设置保存成功");
+    }
+    setShowToolSettings(false);
+  };
 
   useEffect(() => {
     window.electron.ipcRenderer.on("hdc", (_, args: string) => {
@@ -72,6 +124,8 @@ function Main() {
         return <AutomationFlow />;
       case "screen-mirror":
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
+      case "toolbar":
+        return <Toolbar selectedDevice={selectedDeviceId} />;
       case "settings":
         return <Settings />;
       default:
@@ -88,6 +142,7 @@ function Main() {
       reports: "测试报告",
       automation: "自动化",
       "screen-mirror": "屏幕镜像",
+      toolbar: "工具栏",
       settings: "设置",
     };
     return titles[activePage as keyof typeof titles] || "项目管理";
@@ -102,6 +157,7 @@ function Main() {
       reports: "查看详细的测试报告和统计信息",
       automation: "配置自动化测试流程和规则",
       "screen-mirror": "实时屏幕镜像和图像显示",
+      toolbar: "工具栏功能",
       settings: "系统设置和个人偏好配置",
     };
     return (
@@ -110,16 +166,121 @@ function Main() {
     );
   }
 
+  const handleCreateProject = async () => {
+    const project = {
+      name: newProject.name,
+      description: newProject.description,
+      status: "active",
+      last_run: "从未运行",
+      team: newProject.team
+        ? newProject.team.split(",").map((t) => t.trim())
+        : [],
+      tags: newProject.tags
+        ? newProject.tags.split(",").map((t) => t.trim())
+        : [],
+    };
+    const data = await window.api.callApi("POST", Api.createProject, project);
+    if (data.success) {
+      toast.success("项目创建成功");
+    } else {
+      toast.error(data.message);
+    }
+    setCreateDialogOpen(false);
+  };
+
   const getPageActions = (activePage: string) => {
     switch (activePage) {
       case "projects":
         return (
-          <div className="flex gap-2 electron-no-drag">
-            <Button size="sm">新建项目</Button>
-            <Button size="sm" variant="outline">
-              导入项目
-            </Button>
-          </div>
+          <>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">新建项目</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl bg-card">
+                <DialogHeader>
+                  <DialogTitle>创建新项目</DialogTitle>
+                  <DialogDescription>
+                    配置基本信息来创建新的测试项目
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  {/* Project Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="project-name">
+                        项目名称<p className="text-red-500">*</p>
+                      </Label>
+                      <Input
+                        id="project-name"
+                        value={newProject.name}
+                        onChange={(e) =>
+                          setNewProject({ ...newProject, name: e.target.value })
+                        }
+                        placeholder="输入项目名称"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="project-team">团队成员</Label>
+                      <Input
+                        id="project-team"
+                        value={newProject.team}
+                        onChange={(e) =>
+                          setNewProject({ ...newProject, team: e.target.value })
+                        }
+                        placeholder="张三, 李四, 王五"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-description">项目描述</Label>
+                    <Textarea
+                      id="project-description"
+                      value={newProject.description}
+                      onChange={(e) =>
+                        setNewProject({
+                          ...newProject,
+                          description: e.target.value,
+                        })
+                      }
+                      placeholder="描述项目的测试目标和范围"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="project-tags">标签</Label>
+                    <Input
+                      id="project-tags"
+                      value={newProject.tags}
+                      onChange={(e) =>
+                        setNewProject({ ...newProject, tags: e.target.value })
+                      }
+                      placeholder="UI测试, 回归测试, 性能测试"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateDialogOpen(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    onClick={handleCreateProject}
+                    disabled={!newProject.name.trim()}
+                    size="sm"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                    创建项目
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         );
       case "test-cases":
         return (
@@ -145,6 +306,82 @@ function Main() {
             </Button>
           </div>
         );
+      case "toolbar":
+        return (
+          <>
+            <Dialog open={showToolSettings} onOpenChange={setShowToolSettings}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="rounded-full">
+                  <Cog className="w-5 h-5 text-primary animate-spin" />
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="max-w-2xl bg-card">
+                <DialogHeader>
+                  <DialogTitle>工具设置</DialogTitle>
+                  <DialogDescription>
+                    配置截图和录屏工具的参数设置
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">截图格式</label>
+                    <Select
+                      value={toolSettings.screenshotFormat}
+                      onValueChange={(value) =>
+                        setToolSettings((prev) => ({
+                          ...prev,
+                          screenshotFormat: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-full mt-1">
+                        <SelectValue placeholder="暂无设备" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="png">PNG</SelectItem>
+                        <SelectItem value="jpeg">JPG</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">保存位置</label>
+                    <Input
+                      type="text"
+                      value={toolSettings.saveLocation}
+                      onChange={(e) =>
+                        setToolSettings((prev) => ({
+                          ...prev,
+                          saveLocation: e.target.value,
+                        }))
+                      }
+                      className="w-full mt-1"
+                      placeholder="/screenshots"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowToolSettings(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      await saveToolSettings();
+                    }}
+                  >
+                    保存设置
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        );
       default:
         return null;
     }
@@ -153,7 +390,7 @@ function Main() {
     <div className="flex flex-col h-screen bg-background">
       <div className="h-4 electron-drag">
         <div className="flex justify-end electron-drag">
-          {window.electron.process.platform === "win32" && (
+          {window.electron.pf === "win32" && (
             <div className="flex items-center electron-no-drag">
               <button
                 className="w-10 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors electron-no-drag"
@@ -256,6 +493,7 @@ function Main() {
           </div>
         </div>
       </div>
+      <Toaster position="top-center" duration={1000} />
     </div>
   );
 }

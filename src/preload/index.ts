@@ -17,6 +17,10 @@ interface UpdateStatus {
 }
 // Custom APIs for renderer
 const api = {
+  // API请求转发
+  callApi: (method: string, endpoint: string, data?: object) => {
+    return ipcRenderer.invoke("call-api", { method, endpoint, data });
+  },
   // 自动更新相关API
   checkForUpdate: (): Promise<void> => ipcRenderer.invoke("check-for-update"),
 
@@ -31,23 +35,34 @@ const api = {
   installUpdateNow: () => ipcRenderer.invoke("install-update-now"),
 
   getTargets: (): Promise<Target[]> => ipcRenderer.invoke("get-targets"),
-  screencap: (connectKey: string): Promise<string> =>
-    ipcRenderer.invoke("screencap", connectKey),
+  screencap: (connectKey: string, saveToLocal?: boolean): Promise<string> =>
+    ipcRenderer.invoke("screencap", connectKey, saveToLocal),
+
+  // 存储相关API
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  getToolSettings: () => ipcRenderer.invoke("get-tool-settings"),
+  getSystemSettings: () => ipcRenderer.invoke("get-system-settings"),
+  setToolSettings: (settings: object) =>
+    ipcRenderer.invoke("set-tool-settings", settings),
+  setSystemSettings: (settings: object) =>
+    ipcRenderer.invoke("set-system-settings", settings),
 };
 
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
+const extendedElectronAPI = {
+  ...electronAPI,
+  pf: process.platform,
+};
+
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld("electron", electronAPI);
+    contextBridge.exposeInMainWorld("electron", extendedElectronAPI);
     contextBridge.exposeInMainWorld("api", api);
   } catch (error) {
     console.error(error);
   }
 } else {
   // @ts-ignore (define in dts)
-  window.electron = electronAPI;
+  window.electron = extendedElectronAPI;
   // @ts-ignore (define in dts)
   window.api = api;
 }

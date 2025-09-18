@@ -269,7 +269,7 @@ export function Project() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProjects.map((project) => (
               <Card key={project.id} className="relative overflow-hidden">
                 <CardHeader>
@@ -293,24 +293,24 @@ export function Project() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                           查看详情
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <Play className="mr-2 h-4 w-4" />
+                          <Play className="h-4 w-4" />
                           运行测试
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleOpenSettings(project)}
                         >
-                          <Settings className="mr-2 h-4 w-4" />
+                          <Settings className="h-4 w-4" />
                           设置
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDeleteProject(project)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                           删除
                         </DropdownMenuItem>
                       </DropdownMenuContent>

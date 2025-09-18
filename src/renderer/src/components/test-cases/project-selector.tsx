@@ -230,21 +230,18 @@ export function ProjectSelector({
           onMouseLeave={() => setHoveredDir(null)}
         >
           {hasChildren && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0"
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 toggleDirectory(dir.id);
               }}
             >
               {isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-4 w-4" />
               ) : (
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight className="h-4 w-4" />
               )}
-            </Button>
+            </div>
           )}
 
           {!hasChildren && <div className="w-4" />}
@@ -287,18 +284,18 @@ export function ProjectSelector({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleAddSubDirectory(dir)}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 添加子目录
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleEditDirectory(dir)}>
-                <Edit3 className="h-4 w-4 mr-2" />
+                <Edit3 className="h-4 w-4" />
                 编辑名称
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleDeleteDirectory(dir)}
                 className="text-destructive focus:text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 删除目录
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -347,7 +344,6 @@ export function ProjectSelector({
                         size="sm"
                         variant="ghost"
                         disabled={!selectedProject}
-                        className="px-3 bg-transparent"
                         onClick={() => {
                           if (selectedProject) {
                             setIsDialogOpen(true);
@@ -362,7 +358,7 @@ export function ProjectSelector({
                     </TooltipContent>
                   </Tooltip>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="bg-card">
                   <DialogHeader>
                     <DialogTitle>新建</DialogTitle>
                   </DialogHeader>
@@ -378,11 +374,13 @@ export function ProjectSelector({
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => setIsDialogOpen(false)}
                       >
                         取消
                       </Button>
                       <Button
+                        size="sm"
                         onClick={handleAddRootDirectory}
                         disabled={!newDirectoryName.trim()}
                       >

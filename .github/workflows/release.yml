@@ -61,7 +61,7 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/*.tar.gz
-            dist/latest*.yml
+            dist/*.yml
 
   release:
     needs: build

@@ -18,6 +18,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  Pickaxe,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useState } from "react";
@@ -69,6 +70,12 @@ const menuItems = [
     title: "屏幕镜像",
     icon: Monitor,
     page: "screen-mirror",
+    badge: null,
+  },
+  {
+    title: "工具栏",
+    icon: Pickaxe,
+    page: "toolbar",
     badge: null,
   },
   {

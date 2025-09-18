@@ -6,4 +6,4 @@ export interface Target {
 }
 
 export type GetTargets = () => Promise<Target[]>;
-export type Screencap = (connectKey: string) => Promise<string>;
+export type Screencap = (connectKey: string, saveToLocal?: boolean) => Promise<string>;
