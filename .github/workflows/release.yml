@@ -1,0 +1,91 @@
+# .github/workflows/release.yml
+name: Build and Release
+
+permissions:
+  contents: write  # 给予写入仓库内容的权限
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install  # 安装项目依赖
+
+      - name: Build Electron App for windows
+        if: matrix.os == 'windows-latest'  # 只在Windows上运行
+        run: npm run build:win  # 构建Windows版应用
+
+      - name: Build Electron App for macos
+        if: matrix.os == 'macos-latest'  # 只在macOS上运行
+        run: |
+          npm run build:mac
+
+      - name: Cleanup Artifacts for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          npx del-cli "dist/*" "!dist/*.exe" "!dist/*.zip" "!dist/*.yml"
+
+      - name: Cleanup Artifacts for MacOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          npx del-cli "dist/*" "!dist/(*.dmg|*.yml)" 
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: release-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.snap
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/*.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: releases
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            releases/release-ubuntu-latest/*.deb
+            releases/release-ubuntu-latest/*.AppImage
+            releases/release-windows-latest/*.exe
+            releases/release-macos-latest/*.dmg
+            releases/release-macos-latest/*.zip
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
