@@ -1,9 +1,9 @@
 {
-  "name": "electron-react-templete",
+  "name": "sparkles",
   "version": "1.0.7",
-  "description": "An Electron application with React and TypeScript",
+  "description": "一个专业的 HarmonyOS 设备测试工具",
   "main": "./out/main/index.js",
-  "author": "example.com",
+  "author": "sparkles.com",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --write .",
