@@ -1,3 +1,10 @@
+<div align="center" >
+  <img src="resources/icon.png" alt="icon" width="120px" height="120px">
+  <h1>
+    Sparkles v1.0.7 👋
+  </h1>
+</div>
+
 **引言**
 
 **Sparkles**是一个专业的 HarmonyOS 设备 UI 自动化测试工具，采用 Electron + React + TypeScript 技术栈构建，提供完整的自动化测试解决方案。项目名称寓意"闪耀的测试工具"，旨在为 HarmonyOS 应用测试带来高效、智能的测试体验。项目采用模块化架构，集成了工作流引擎、测试计划管理、屏幕镜像等核心功能，为鸿蒙测试工程师提供了一站式的自动化测试解决方案。
