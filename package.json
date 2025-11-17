@@ -1,9 +1,9 @@
 {
-  "name": "sparkles",
+  "name": "electron-react-templete",
   "version": "1.0.7",
-  "description": "一个专业的 HarmonyOS 设备测试工具",
+  "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
-  "author": "sparkles.com",
+  "author": "example.com",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --write .",
@@ -41,6 +41,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.1.13",
+    "@types/react-window": "^1.8.8",
     "@xyflow/react": "^12.8.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -54,13 +55,17 @@
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.5",
     "react-router-dom": "^7.9.1",
+    "react-window": "^2.2.2",
+    "react-window-infinite-loader": "^2.0.0",
+    "recharts": "^2.15.4",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.13",
-    "tw-animate-css": "^1.2.9"
+    "tw-animate-css": "^1.2.9",
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

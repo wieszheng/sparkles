@@ -1,7 +1,6 @@
-import { useEffect, useState, useCallback, memo, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -27,16 +26,18 @@ import {
 import {
   Clock,
   Plus,
-  ZoomIn,
   FolderOpen,
   Loader2,
   Save,
   Film,
   CheckCircle2,
   FileVideo,
-  Check,
   ChevronLeft,
   ChevronRight,
+  Gauge,
+  PlaySquare,
+  Square,
+  Timer,
 } from "lucide-react";
 
 import { Api } from "@/apis";
@@ -44,6 +45,8 @@ import { toast } from "sonner";
 import { ProgressBar } from "@/components/ProgressBar.tsx";
 
 import Pagination from "@/components/video/pagination.tsx";
+// import { UploadVideoDialog } from "@/components/video/upload_video.tsx";
+import { FrameListOptimized } from "@/components/video/FrameListOptimized";
 
 type VideoStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 
@@ -51,7 +54,7 @@ interface Frame {
   id: number;
   frame_index: number;
   timestamp: number;
-  object_name: string;
+  url: string;
 }
 
 interface VideoItem {
@@ -59,9 +62,13 @@ interface VideoItem {
   filename: string;
   status?: VideoStatus;
   progress?: number;
-  totalFrames?: number;
+  total_frames?: number;
   duration: number | null;
+  total_duration?: number;
   fps: number;
+  first_frame: number;
+  last_frame: number;
+  manual_confirm: boolean;
 }
 
 interface Task {
@@ -74,47 +81,94 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
   const [selectedFirstFrame, setSelectedFirstFrame] = useState<number | null>(
-    0,
+    null,
   );
 
-  const [selectedLastFrame, setSelectedLastFrame] = useState<number | null>(0);
+  const [selectedLastFrame, setSelectedLastFrame] = useState<number | null>(
+    null,
+  );
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [tackName, setTackName] = useState("");
   const [path, setPath] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [frames, setFrames] = useState<Frame[]>([]);
-  const [frameCache, setFrameCache] = useState<Record<string, Frame[]>>({});
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [isTaskListLoading, setIsTaskListLoading] = useState(false);
+
   const [isVideoListLoading, setIsVideoListLoading] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isUploadingVideos, setIsUploadingVideos] = useState(false);
+  const [isFrameLoading, setIsFrameLoading] = useState(false);
   const itemsPerPage = 7;
   const totalPages = Math.ceil(videos.length / itemsPerPage);
 
-  const handleSelectFirst = useCallback(
-    (f: Frame) => setSelectedFirstFrame(f),
-    [],
+  const updateFrames = useCallback(
+    async (firstFrame: number | null, lastFrame: number | null) => {
+      if (!selectedVideo || firstFrame === null || lastFrame === null) return;
+
+      // 确保首尾帧顺序正确
+      if (firstFrame > lastFrame) return;
+
+      try {
+        const response = await window.api.callApi(
+          "PUT",
+          Api.updateVideoFrames,
+          {
+            video_id: selectedVideo.id,
+            first_frame: firstFrame,
+            last_frame: lastFrame,
+          },
+        );
+        if (response && response.success) {
+          setSelectedVideo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  first_frame: response.data.first_frame,
+                  last_frame: response.data.last_frame,
+                  total_duration: response.data.total_duration,
+                }
+              : null,
+          );
+        }
+      } catch (error) {
+        console.error("自动更新首尾帧失败:", error);
+      }
+    },
+    [selectedVideo],
   );
+
+  // 处理首帧选择
+  const handleSelectFirst = useCallback(
+    (index: number) => {
+      setSelectedFirstFrame(index);
+      if (selectedLastFrame !== null) {
+        updateFrames(index, selectedLastFrame);
+      }
+    },
+    [selectedLastFrame, updateFrames],
+  );
+
+  // 处理尾帧选择
   const handleSelectLast = useCallback(
-    (f: Frame) => setSelectedLastFrame(f),
-    [],
+    (index: number) => {
+      setSelectedLastFrame(index);
+      if (selectedFirstFrame !== null) {
+        updateFrames(selectedFirstFrame, index);
+      }
+    },
+    [selectedFirstFrame, updateFrames],
   );
 
   const getTaskList = async () => {
-    setIsTaskListLoading(true);
     try {
-      console.log(selectedProject);
       const resp = await window.api.callApi("GET", Api.getTask);
       setTasks(resp.data.tasks);
       setSelectedTask(resp.data.tasks[0]?.id || "");
     } catch (error) {
       console.error("获取任务列表失败:", error);
       toast.error("获取任务列表失败");
-    } finally {
-      setIsTaskListLoading(false);
     }
   };
 
@@ -127,17 +181,63 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
         "GET",
         `${Api.videos}?task_id=${selectedTask}`,
       );
-      setVideos(resp.data.videos);
+      const videoList = resp.data.videos;
+      setVideos(videoList);
       // 切换任务时清理当前帧与选择，避免跨任务误用缓存
-      setSelectedVideo(null);
       setFrames([]);
       setSelectedFirstFrame(null);
       setSelectedLastFrame(null);
     } catch (error) {
       console.error("获取视频列表失败:", error);
       toast.error("获取视频列表失败");
+      setVideos([]);
+      setSelectedVideo(null);
+      setFrames([]);
+      setSelectedFirstFrame(null);
+      setSelectedLastFrame(null);
     } finally {
       setIsVideoListLoading(false);
+    }
+  };
+
+  const handleVideoSelect = async (video) => {
+    setSelectedVideo(video);
+    setIsFrameLoading(true);
+    
+    try {
+      const resp = await window.api.callApi(
+        "GET",
+        `${Api.videoFrames}?video_id=${video.id}`,
+      );
+      if (resp && resp.data && resp.data.frames) {
+        const frameData = resp.data.frames;
+        setFrames(frameData);
+        // 确保首尾帧索引在有效范围内
+        const firstFrameIndex = Math.max(
+          0,
+          Math.min(frameData.length - 1, video.first_frame),
+        );
+        const lastFrameIndex = Math.max(
+          0,
+          Math.min(frameData.length - 1, video.last_frame),
+        );
+        setSelectedFirstFrame(firstFrameIndex);
+        setSelectedLastFrame(lastFrameIndex);
+      } else {
+        console.error("获取帧数据失败: 返回数据格式不正确");
+        toast.error("获取帧数据失败");
+        setFrames([]);
+        setSelectedFirstFrame(null);
+        setSelectedLastFrame(null);
+      }
+    } catch (error) {
+      console.error("获取帧数据异常:", error);
+      toast.error("获取帧数据时发生错误");
+      setFrames([]);
+      setSelectedFirstFrame(null);
+      setSelectedLastFrame(null);
+    } finally {
+      setIsFrameLoading(false);
     }
   };
 
@@ -151,19 +251,6 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
 
   const firstFrameScrollRef = useRef<HTMLDivElement>(null);
   const lastFrameScrollRef = useRef<HTMLDivElement>(null);
-  const [firstFrameScrollProgress, setFirstFrameScrollProgress] = useState(0);
-  const [lastFrameScrollProgress, setLastFrameScrollProgress] = useState(0);
-
-  const handleImageClick = (
-    e: React.MouseEvent,
-    imageUrl: string,
-    time: string,
-  ) => {
-    if (e.button === 2 || e.type === "contextmenu") {
-      e.preventDefault();
-      // setLightboxImage({ url: imageUrl, time });
-    }
-  };
 
   const scrollFrames = (
     ref: React.RefObject<HTMLDivElement>,
@@ -181,47 +268,18 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
   const handleNavigationBarClick = (
     e: React.MouseEvent<HTMLDivElement>,
     ref: React.RefObject<HTMLDivElement>,
+    totalFrames?: number,
   ) => {
     if (ref.current) {
       const rect = e.currentTarget.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
-      const percentage = clickX / rect.width;
+      const percentage = Math.max(0, Math.min(1, clickX / rect.width)); // 限制在0-1范围内
       const { scrollWidth, clientWidth } = ref.current;
       const maxScroll = scrollWidth - clientWidth;
       const targetScroll = maxScroll * percentage;
       ref.current.scrollTo({ left: targetScroll, behavior: "smooth" });
     }
   };
-
-  useEffect(() => {
-    const handleScroll = (
-      ref: React.RefObject<HTMLDivElement>,
-      setProgress: (val: number) => void,
-    ) => {
-      if (ref.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = ref.current;
-        const maxScroll = scrollWidth - clientWidth;
-        const progress = maxScroll > 0 ? (scrollLeft / maxScroll) * 100 : 0;
-        setProgress(progress);
-      }
-    };
-
-    const firstRef = firstFrameScrollRef.current;
-    const lastRef = lastFrameScrollRef.current;
-
-    const firstScrollHandler = () =>
-      handleScroll(firstFrameScrollRef, setFirstFrameScrollProgress);
-    const lastScrollHandler = () =>
-      handleScroll(lastFrameScrollRef, setLastFrameScrollProgress);
-
-    firstRef?.addEventListener("scroll", firstScrollHandler);
-    lastRef?.addEventListener("scroll", lastScrollHandler);
-
-    return () => {
-      firstRef?.removeEventListener("scroll", firstScrollHandler);
-      lastRef?.removeEventListener("scroll", lastScrollHandler);
-    };
-  }, []);
 
   return (
     <div className="h-[calc(100vh-120px)] space-y-5 bg-card rounded-lg">
@@ -250,6 +308,15 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto py-4">
+              <div className="flex items-center justify-between mb-1 flex-shrink-0 px-0.5">
+                <h3 className="text-sm font-medium">视频列表</h3>
+                {/*{selectedTask && (*/}
+                {/*  <UploadVideoDialog*/}
+                {/*    taskId={selectedTask}*/}
+                {/*    // onVideoUploaded={handleVideoUploaded}*/}
+                {/*  />*/}
+                {/*)}*/}
+              </div>
               {isVideoListLoading ? (
                 <div className="text-center py-20 text-muted-foreground">
                   <Loader2 className="h-10 w-10 mx-auto mb-2 animate-spin text-primary" />
@@ -266,34 +333,15 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
                   {videos.map((video) => (
                     <button
                       key={video.id}
-                      onClick={async () => {
-                        setSelectedVideo(video);
-                        const cacheKey = `${selectedTask}:${video.id}`;
-                        const cached = frameCache[cacheKey];
-                        if (cached && cached.length) {
-                          setFrames(cached);
-                        } else {
-                          const resp = await window.api.callApi(
-                            "GET",
-                            `${Api.videoFrames}?video_id=${video.id}`,
-                          );
-                          setFrames(resp.data.frames);
-                          setFrameCache((prev) => ({
-                            ...prev,
-                            [cacheKey]: resp.data.frames,
-                          }));
-                        }
-                        setSelectedFirstFrame(null);
-                        setSelectedLastFrame(null);
-                      }}
+                      onClick={() => handleVideoSelect(video)}
                       disabled={video.status !== "DONE"}
-                      className={`w-full rounded-lg border p-3 text-left relative ${
+                      className={`w-full rounded-lg border p-2 text-left relative ${
                         selectedVideo?.id === video.id
                           ? "border-sidebar-primary bg-sidebar-accent text-sidebar-accent-foreground"
                           : "border-sidebar-border bg-sidebar hover:bg-sidebar-accent text-sidebar-foreground"
                       } ${video.status !== "DONE" ? "opacity-60 cursor-not-allowed" : ""}`}
                     >
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-0.5 right-1">
                         {video.status !== "DONE" ? (
                           <Badge
                             variant="secondary"
@@ -327,7 +375,7 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
                           </div>
                           <div className="flex items-center gap-1">
                             <Film className="h-3 w-3" />
-                            <span>{video.fps}</span>
+                            <span>{video.total_frames}</span>
                           </div>
                         </div>
 
@@ -365,210 +413,133 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
         <ResizableHandle withHandle />
 
         <ResizablePanel defaultSize={76}>
-          <div className="flex h-full flex-col mt-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-6 text-sm justify-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">首帧:</span>
-                  <span className="font-mono font-semibold text-foreground w-20">
-                    {/*{selectedFirstFrame?.timestamp || "--:--:--"}*/}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">尾帧:</span>
-                  <span className="font-mono font-semibold text-foreground w-20">
-                    {/*{selectedLastFrame?.timestamp || "--:--:--"}*/}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">耗时:</span>
-                  {/*<span className="font-mono text-lg text-lime-600 w-22">*/}
-                  {/*  {selectedFirstFrame?.timestamp &&*/}
-                  {/*  selectedLastFrame?.timestamp*/}
-                  {/*    ? Math.floor(*/}
-                  {/*        selectedLastFrame?.timestamp -*/}
-                  {/*          selectedFirstFrame?.timestamp,*/}
-                  {/*      ) + "ms"*/}
-                  {/*    : "--:--:--"}*/}
-                  {/*</span>*/}
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 overflow-hidden px-6 py-4">
-              <div className="space-y-6 h-full flex flex-col">
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="flex-1 flex flex-col gap-2 min-h-0">
-                    <div className="flex items-center gap-2 flex-1 min-h-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() =>
-                          scrollFrames(firstFrameScrollRef, "left")
-                        }
-                        className="flex-shrink-0 h-8 w-8 hover:bg-accent transition-colors rounded-full"
-                      >
-                        <ChevronLeft className="h-6 w-6" />
-                      </Button>
-                      <div className="flex-1 relative min-h-0 overflow-hidden">
-                        <div
-                          ref={firstFrameScrollRef}
-                          className="overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
-                          style={{
-                            scrollbarWidth: "none",
-                            msOverflowStyle: "none",
-                          }}
-                        >
-                          <div className="flex gap-3 min-w-min h-full p-2">
-                            {frames.map((frame, index) => (
-                              <div
-                                key={`first-frame-${index}`}
-                                className="flex-shrink-0 flex flex-col gap-2 h-full"
-                              >
-                                <div
-                                  onClick={() => setSelectedFirstFrame(index)}
-                                  onContextMenu={(e) =>
-                                    handleImageClick(
-                                      e,
-                                      frame.object_name,
-                                      `${frame.timestamp.toFixed(2)}s`,
-                                    )
-                                  }
-                                  className={`max-w-[7rem] rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center relative bg-muted ${
-                                    selectedFirstFrame === index
-                                      ? "ring-2 ring-red-500 ring-offset-background"
-                                      : "hover:ring-2 hover:ring-red-500 ring-offset-background"
-                                  }`}
-                                >
-                                  <img
-                                    src={frame.object_name}
-                                    alt={`Frame at ${frame.timestamp.toFixed(2)}s`}
-                                    className="w-full h-full object-contain"
-                                  />
-                                  {selectedFirstFrame === index && (
-                                    <div className="absolute top-1 right-1 bg-red-600 rounded-full p-1">
-                                      <Check className="h-3 w-3 text-white" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="text-xs text-muted-foreground text-center font-medium mb-2">
-                                  {frame.timestamp.toFixed(2)}ms
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() =>
-                          scrollFrames(firstFrameScrollRef, "right")
-                        }
-                        className="flex-shrink-0 h-8 w-8 hover:bg-accent transition-colors rounded-full"
-                      >
-                        <ChevronRight className="h-6 w-6" />
-                      </Button>
-                    </div>
-                    <div
-                      className="relative h-3 bg-muted rounded-lg overflow-hidden cursor-pointer transition-all"
-                      onClick={(e) =>
-                        handleNavigationBarClick(
-                          e,
-                          firstFrameScrollRef,
-                          selectedVideo?.totalFrames,
-                        )
-                      }
-                    >
-                      {selectedFirstFrame !== null && (
-                        <div
-                          className="absolute top-2 -translate-y-1/2 w-2 h-3 bg-primary rounded-full border-1 border-background shadow-md transition-all duration-300"
-                          style={{
-                            left: `${(selectedFirstFrame / (frames.length - 1)) * 100}%`,
-                            transform: "translate(-50%, -50%)",
-                          }}
-                        />
-                      )}
-                    </div>
+          <div className="h-full flex flex-col overflow-hidden">
+            <div className="p-2 flex-shrink-0">
+              <div className="flex flex-wrap justify-center gap-6 mt-2">
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 bg-blue-500/10 rounded">
+                    <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">视频时长</p>
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {selectedVideo?.duration || 0}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col min-h-0 mb-2">
-                  <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                    <div
-                      ref={lastFrameScrollRef}
-                      className="overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
-                      style={{
-                        scrollbarWidth: "none",
-                        msOverflowStyle: "none",
-                      }}
-                    >
-                      <div className="flex gap-3 p-2 min-w-min h-full">
-                        {frames.map((frame, index) => (
-                          <div
-                            key={`last-frame-${index}`}
-                            className="flex-shrink-0 flex flex-col h-full"
-                          >
-                            <div
-                              onClick={() => setSelectedLastFrame(index)}
-                              onContextMenu={(e) =>
-                                handleImageClick(
-                                  e,
-                                  frame.object_name,
-                                  `${frame.timestamp.toFixed(2)}s`,
-                                )
-                              }
-                              className={`max-w-[10rem] rounded-lg overflow-hidden cursor-pointer transition-all flex items-center justify-center relative bg-muted ${
-                                selectedLastFrame === index
-                                  ? "ring-2 ring-red-500 ring-offset-background"
-                                  : "hover:ring-2 hover:ring-red-500 ring-offset-background"
-                              }`}
-                            >
-                              <img
-                                src={frame.object_name || "/placeholder.svg"}
-                                alt={`Frame at ${frame.timestamp.toFixed(2)}s`}
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src =
-                                    "/placeholder.svg?height=400&width=300";
-                                }}
-                              />
-                              {selectedLastFrame === index && (
-                                <div className="absolute top-1 right-1 bg-purple-600 rounded-full p-1">
-                                  <Check className="h-3 w-3 text-white" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600 dark:text-slate-400 text-center font-medium">
-                              {frame.timestamp.toFixed(2)}s
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                <div className="h-8 w-px bg-border" />
+
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 bg-green-500/10 rounded">
+                    <Gauge className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
-                  <div
-                    className="relative h-2.5 bg-muted overflow-hidden cursor-pointer transition-all"
-                    onClick={(e) =>
-                      handleNavigationBarClick(
-                        e,
-                        lastFrameScrollRef,
-                        selectedVideo?.totalFrames,
-                      )
-                    }
-                  >
-                    {selectedLastFrame !== null && (
-                      <div
-                        className="absolute top-2 -translate-y-1/2 w-2 h-3 bg-primary rounded-full border-1 border-background shadow-md transition-all duration-300"
-                        style={{
-                          left: `${(selectedLastFrame / (frames.length - 1)) * 100}%`,
-                          transform: "translate(-50%, -50%)",
-                        }}
-                      />
-                    )}
+                  <div>
+                    <p className="text-xs text-muted-foreground">视频帧率</p>
+                    <p className="text-sm font-semibold text-green-600 dark:text-green-400">
+                      {selectedVideo?.fps || 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-border" />
+
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 bg-purple-500/10 rounded">
+                    <PlaySquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">首帧</p>
+                    <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                      {selectedFirstFrame ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-border" />
+
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 bg-orange-500/10 rounded">
+                    <Square className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">尾帧</p>
+                    <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                      {selectedLastFrame ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-8 w-px bg-border" />
+
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 bg-pink-500/10 rounded">
+                    <Timer className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">总耗时/Ms</p>
+                    <p className="text-sm font-semibold text-pink-600 dark:text-pink-400">
+                      {selectedVideo?.total_duration || 0}
+                    </p>
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="flex-1 flex flex-col overflow-hidden p-3 gap-4">
+              {isFrameLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center h-full min-w-full">
+                  <div className="text-center text-muted-foreground">
+                    <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                      <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                    <p className="text-sm mb-1 font-medium">正在加载帧数据...</p>
+                    <p className="text-xs opacity-70">
+                      请稍候，正在获取视频帧信息
+                    </p>
+                  </div>
+                </div>
+              ) : frames.length > 0 ? (
+                <>
+                  <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    <div className="flex-1 overflow-hidden min-h-0">
+                      <FrameListOptimized
+                        frames={frames}
+                        selectedFrame={selectedFirstFrame}
+                        onFrameSelect={handleSelectFirst}
+                        frameType="first"
+                        scrollRef={firstFrameScrollRef}
+                        onScroll={(direction) => scrollFrames(firstFrameScrollRef, direction)}
+                        onNavigationClick={handleNavigationBarClick}
+                        isLoading={isFrameLoading}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col overflow-hidden min-h-0 ">
+                    <div className="flex-1 overflow-hidden min-h-0">
+                      <FrameListOptimized
+                        frames={frames}
+                        selectedFrame={selectedLastFrame}
+                        onFrameSelect={handleSelectLast}
+                        frameType="last"
+                        scrollRef={lastFrameScrollRef}
+                        onScroll={(direction) => scrollFrames(lastFrameScrollRef, direction)}
+                        onNavigationClick={handleNavigationBarClick}
+                        isLoading={isFrameLoading}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center h-full min-w-full">
+                  <div className="text-center text-muted-foreground">
+                    <Square className="h-12 w-12 mx-auto mb-1 opacity-50" />
+                    <p className="text-sm mb-1">暂无帧数据</p>
+                    <p className="text-xs opacity-70">
+                      请从左侧选择一个视频进行分析
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </ResizablePanel>

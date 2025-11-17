@@ -47,6 +47,7 @@ import { Toolbar } from "@/components/Toolbar";
 import { AiChat } from "@/components/Chat";
 import { Intelligence } from "@/components/Intelligence";
 import { FrameAnalyzer } from "@/components/FrameAnalyzer";
+import { Monitoring } from "@/components/Monitoring";
 
 // 定义设备类型
 interface Device {
@@ -173,6 +174,8 @@ function Main() {
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
       case "video-frame-analyzer":
         return <FrameAnalyzer selectedProject={selectedProject} />;
+      case "monitoring":
+        return <Monitoring />;
       case "toolbar":
         return <Toolbar selectedDevice={selectedDeviceId} />;
       case "applications":
@@ -200,6 +203,7 @@ function Main() {
       reports: "测试报告",
       automation: "自动化",
       "video-frame-analyzer": "耗时分析",
+      monitoring: "应用监控",
       "screen-mirror": "屏幕镜像",
       toolbar: "工具栏",
       applications: "应用列表",
@@ -218,6 +222,7 @@ function Main() {
       reports: "查看详细的测试报告和统计信息",
       automation: "配置自动化测试流程和规则",
       "video-frame-analyzer": "视频帧分析并统计耗时",
+      monitoring: "用APP场景性能监控",
       "screen-mirror": "实时屏幕镜像和图像显示",
       toolbar: "工具栏功能",
       applications: "查看和管理设备上的应用",

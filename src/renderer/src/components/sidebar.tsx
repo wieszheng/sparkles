@@ -21,6 +21,7 @@ import {
   Pickaxe,
   Grid3X3,
   Video,
+  Activity,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
@@ -90,6 +91,12 @@ const menuItems = [
     title: "帧分析",
     icon: Video,
     page: "video-frame-analyzer",
+    badge: null,
+  },
+  {
+    title: "应用监控",
+    icon: Activity,
+    page: "monitoring",
     badge: null,
   },
   {
