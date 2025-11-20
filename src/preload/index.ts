@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
 import type { Target } from "../types";
-import { get } from "node:http";
 interface UpdateStatus {
   status:
     | "checking"
