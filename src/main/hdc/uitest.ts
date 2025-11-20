@@ -88,7 +88,7 @@ export async function click(
     x: number;
     y: number;
   },
-// ) {
+) {
 //   const driver = await getUiDriver(connectKey);
 //   await driver.click(position.x, position.y);
 }
