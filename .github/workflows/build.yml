@@ -26,9 +26,9 @@ jobs:
             arch: x64,arm64  # 支持 Intel 和 Apple Silicon
           
           # Windows 构建
-          - os: windows-latest
-            platform: win
-            arch: x64,ia32  # 64位和32位
+          # - os: windows-latest
+          #   platform: win
+          #   arch: x64,ia32  # 64位和32位
 
     steps:
       # 1. 检出代码
