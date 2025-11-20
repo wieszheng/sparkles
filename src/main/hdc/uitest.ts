@@ -88,9 +88,9 @@ export async function click(
     x: number;
     y: number;
   },
-) {
-  const driver = await getUiDriver(connectKey);
-  await driver.click(position.x, position.y);
+// ) {
+//   const driver = await getUiDriver(connectKey);
+//   await driver.click(position.x, position.y);
 }
 
 export async function longClick(
@@ -100,7 +100,7 @@ export async function longClick(
     y: number;
   },
 ) {
-  const driver = await getUiDriver(connectKey);
+  // const driver = await getUiDriver(connectKey);
   // await driver.longClick(position.x, position.y);
 }
 
@@ -111,7 +111,7 @@ export async function doubleClick(
     y: number;
   },
 ) {
-  const driver = await getUiDriver(connectKey);
+  // const driver = await getUiDriver(connectKey);
   // await driver.doubleClick(position.x, position.y);
 }
 export async function swipe(
@@ -125,7 +125,7 @@ export async function swipe(
     y: number;
   },
 ) {
-  const driver = await getUiDriver(connectKey);
+  // const driver = await getUiDriver(connectKey);
   // await driver.swipe(start.x, start.y, end.x, end.y);
 }
 
