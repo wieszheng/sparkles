@@ -1,0 +1,160 @@
+# .github/workflows/build.yml
+name: Build and Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 当推送 tag 时触发发布
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  # ==================== 构建任务 ====================
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS 构建
+          - os: macos-latest
+            platform: mac
+            arch: x64,arm64  # 支持 Intel 和 Apple Silicon
+          
+          # Windows 构建
+          - os: windows-latest
+            platform: win
+            arch: x64,ia32  # 64位和32位
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 Node.js 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: npm install
+
+      # 4. 打包应用（使用 electron-builder）
+      - name: Package Electron app
+
+        run: |
+          if [ "${{ matrix.platform }}" == "mac" ]; then
+            npm run build:mac
+          elif [ "${{ matrix.platform }}" == "win" ]; then
+            npm run build:win
+          else
+            npm run build:linux
+          fi
+        shell: bash
+
+      # 5. 上传构建产物
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ matrix.platform }}-build
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.snap
+            dist/*.zip
+
+  # ==================== 发布任务 ====================
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')  # 只在 tag 推送时执行
+    
+    permissions:
+      contents: write  # 需要写入权限来创建 release
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 下载所有构建产物
+      - name: Download all artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: ./artifacts
+
+      # 3. 准备发布文件
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          find ./artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.zip" \) -exec cp {} release/ \;
+          ls -lah release/
+
+      # 4. 生成更新日志
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 5. 创建 GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          files: release/*
+          body: |
+            ## 🚀 更新内容
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ## 📦 下载说明
+            
+            - **Windows**: 下载 `.exe` 文件
+            - **macOS (Intel)**: 下载 `x64.dmg` 文件
+            - **macOS (Apple Silicon)**: 下载 `arm64.dmg` 文件
+            - **Linux**: 下载 `.AppImage` 或 `.deb` / `.rpm` 文件
+            
+            ## ✨ 安装说明
+            
+            ### Windows
+            直接运行 `.exe` 安装程序
+            
+            ### macOS
+            1. 打开 `.dmg` 文件
+            2. 将应用拖拽到 Applications 文件夹
+            3. 首次打开需要在"系统偏好设置 > 安全性与隐私"中允许
+            
+            ### Linux
+            ```bash
+            # AppImage
+            chmod +x *.AppImage
+            ./MyApp.AppImage
+            
+            # Debian/Ubuntu
+            sudo dpkg -i *.deb
+            
+            # RedHat/Fedora
+            sudo rpm -i *.rpm
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
