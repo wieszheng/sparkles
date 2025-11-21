@@ -126,27 +126,24 @@ jobs:
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
           files: release/*
           body: |
-            ## 🚀 更新内容
+            ### 🚀 更新内容
             
             ${{ steps.changelog.outputs.changelog }}
             
-            ## 📦 下载说明
+            ### 📦 下载说明
             
             - **Windows**: 下载 `.exe` 文件
             - **macOS (Intel)**: 下载 `x64.dmg` 文件
             - **macOS (Apple Silicon)**: 下载 `arm64.dmg` 文件
-            - **Linux**: 下载 `.AppImage` 或 `.deb` / `.rpm` 文件
             
-            ## ✨ 安装说明
+            ### ✨ 安装说明
             
-            ### Windows
-            直接运行 `.exe` 安装程序
-            
-            ### macOS
+            **Windows**
+            1. 双击运行 `.exe` 安装程序
+                        
+            **macOS**
             1. 打开 `.dmg` 文件
             2. 将应用拖拽到 Applications 文件夹
             3. 首次打开需要在"系统偏好设置 > 安全性与隐私"中允许
-            
-            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
