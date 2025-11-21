@@ -58,7 +58,10 @@ jobs:
             npm run build:linux
           fi
         shell: bash
-
+        
+      - name: Remove quarantine from zip/dmg
+        run: xattr -cr dist/*.dmg dist/*.zip
+        
       # 5. 上传构建产物
       - name: Upload artifacts
         uses: actions/upload-artifact@v4.6.2
@@ -144,17 +147,6 @@ jobs:
             2. 将应用拖拽到 Applications 文件夹
             3. 首次打开需要在"系统偏好设置 > 安全性与隐私"中允许
             
-            ### Linux
-            ```bash
-            # AppImage
-            chmod +x *.AppImage
-            ./MyApp.AppImage
-            
-            # Debian/Ubuntu
-            sudo dpkg -i *.deb
-            
-            # RedHat/Fedora
-            sudo rpm -i *.rpm
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
