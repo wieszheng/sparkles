@@ -1,8 +1,3 @@
-/**
- * 执行状态管理器
- * 负责管理工作流执行状态和节点状态同步
- */
-
 import type { NodeExecutionStatus } from "../../../types/workflow";
 
 export interface ExecutionState {
@@ -182,7 +177,8 @@ export class ExecutionStateManager {
 
   // 根据执行上下文更新状态
   updateFromExecutionContext(context: any): void {
-    const { isRunning, currentNodeId, executionLog, variables, nodeStatuses } = context;
+    const { isRunning, currentNodeId, executionLog, variables, nodeStatuses } =
+      context;
 
     this.state.isRunning = isRunning;
     this.state.currentNodeId = currentNodeId;
@@ -197,7 +193,7 @@ export class ExecutionStateManager {
     }
 
     // 从ExecutionContext中直接获取节点状态
-    if (nodeStatuses && typeof nodeStatuses === 'object') {
+    if (nodeStatuses && typeof nodeStatuses === "object") {
       const nodeStatusMap = new Map<string, NodeExecutionStatus>();
       Object.entries(nodeStatuses).forEach(([nodeId, status]) => {
         nodeStatusMap.set(nodeId, status as NodeExecutionStatus);

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { BrowserWindow, dialog, ipcMain } from "electron";
 import log from "electron-log";
 import { getSettingsStore } from "./store";
 import {
@@ -11,15 +11,15 @@ import {
 } from "./hdc";
 import { clearApp, goBack, goHome } from "./hdc/action";
 import {
-  getBundles,
+  cleanBundleCache,
+  cleanBundleData,
   getBundleInfos,
+  getBundles,
+  getTopBundle,
   installBundle,
   startBundle,
   stopBundle,
-  cleanBundleData,
-  cleanBundleCache,
   uninstallBundle,
-  getTopBundle,
 } from "./hdc/bundle";
 
 // 导入uitest屏幕捕获相关方法
@@ -367,10 +367,7 @@ export function initIpcHandlers(): void {
         }
 
         // 返回完整路径
-        const fullPaths = filteredFiles.map((file) =>
-          path.join(directoryPath, file),
-        );
-        return fullPaths;
+        return filteredFiles.map((file) => path.join(directoryPath, file));
       } catch (error) {
         log.error("读取目录文件失败:", error);
         return [];

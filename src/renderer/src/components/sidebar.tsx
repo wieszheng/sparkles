@@ -22,6 +22,7 @@ import {
   Grid3X3,
   Video,
   Activity,
+  QrCode,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
@@ -66,6 +67,12 @@ const menuItems = [
     title: "工具栏",
     icon: Pickaxe,
     page: "toolbar",
+    badge: null,
+  },
+  {
+    title: "二维码生成",
+    icon: QrCode,
+    page: "qrcode",
     badge: null,
   },
 

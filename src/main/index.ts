@@ -5,6 +5,8 @@ import icon from "../../resources/icon.png?asset";
 import { initializeAutoUpdater } from "./updater";
 import { initHdcClient } from "./hdc";
 import { initIpcHandlers } from "./handlers";
+import { setupMenu } from "./menu";
+import { destroyTray, setUpTray } from "./tray";
 
 let loadingWindow: BrowserWindow | null = null;
 
@@ -51,6 +53,8 @@ function createWindow(): void {
   initIpcHandlers();
 
   mainWindow.on("ready-to-show", () => {
+    setupMenu();
+    setUpTray(mainWindow);
     mainWindow.show();
   });
 
@@ -112,7 +116,7 @@ app.whenReady().then(() => {
 
   setTimeout(() => {
     createWindow(); // 2. 再创建主窗口（可优化为同步但延迟显示）
-  }, 3000); // 可选延迟，也可直接调用
+  }, 2000); // 可选延迟，也可直接调用
 
   app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -121,6 +125,7 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    destroyTray();
     app.quit();
   }
 });

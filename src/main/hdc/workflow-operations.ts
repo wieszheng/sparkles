@@ -3,8 +3,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "node:os";
 import { shell } from "./utils";
-import { startApp, stopApp, sleep } from "./action";
-import { click, longClick, doubleClick, swipe } from "./uitest";
+import { startApp, stopApp, sleep, clickCmd } from "./action";
 import type { NodeConfig } from "../../types/workflow";
 
 /**
@@ -70,14 +69,14 @@ export class WorkflowOperations {
     console.log("Clicking at coordinates:", x, y);
     switch (clickType) {
       case "long":
-        await longClick(this.connectKey, { x, y });
+        await clickCmd(this.connectKey, "long", { x, y });
         break;
       case "double":
-        await doubleClick(this.connectKey, { x, y });
+        await clickCmd(this.connectKey, "double", { x, y });
         break;
       case "click":
       default:
-        await click(this.connectKey, { x, y });
+        await clickCmd(this.connectKey, "click", { x, y });
         break;
     }
   }
@@ -228,7 +227,7 @@ export class WorkflowOperations {
     const endX = config.endX || 500;
     const endY = config.endY || 500;
 
-    await swipe(
+    console.log(
       this.connectKey,
       { x: startX, y: startY },
       { x: endX, y: endY },
@@ -278,14 +277,12 @@ export class WorkflowOperations {
         );
         break;
     }
-
-    // 解析结果以确定条件是否满足
-    return this.parseConditionResult(result, config);
-
     // 条件检查后等待
     if (config.waitTime && config.waitTime > 0) {
       await sleep(config.waitTime);
     }
+    // 解析结果以确定条件是否满足
+    return this.parseConditionResult(result, config);
   }
 
   /**

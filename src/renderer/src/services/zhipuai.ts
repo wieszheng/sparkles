@@ -87,8 +87,11 @@ export class ZhipuAIChatService {
     }
 
     // 准备消息数组，如果需要则添加系统提示词
-    const finalMessages = includeSystemPrompt 
-      ? [{ role: "system" as const, content: AI_TEST_ASSISTANT_SYSTEM_PROMPT }, ...messages]
+    const finalMessages = includeSystemPrompt
+      ? [
+          { role: "system" as const, content: AI_TEST_ASSISTANT_SYSTEM_PROMPT },
+          ...messages,
+        ]
       : messages;
 
     try {
@@ -138,8 +141,11 @@ export class ZhipuAIChatService {
     }
 
     // 准备消息数组，如果需要则添加系统提示词
-    const finalMessages = includeSystemPrompt 
-      ? [{ role: "system" as const, content: AI_TEST_ASSISTANT_SYSTEM_PROMPT }, ...messages]
+    const finalMessages = includeSystemPrompt
+      ? [
+          { role: "system" as const, content: AI_TEST_ASSISTANT_SYSTEM_PROMPT },
+          ...messages,
+        ]
       : messages;
 
     const response = await fetch(
@@ -190,7 +196,7 @@ export class ZhipuAIChatService {
                 yield data.choices[0].delta.content;
               }
             } catch (e) {
-              // 忽略解析错误
+              console.error(e);
             }
           }
         }

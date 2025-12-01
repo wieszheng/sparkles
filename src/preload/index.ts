@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
 import type { Target } from "../types";
+
 interface UpdateStatus {
   status:
     | "checking"
@@ -11,7 +12,6 @@ interface UpdateStatus {
     | "up-to-date"
     | "error";
   message: string;
-  // 可以添加版本信息
   versionInfo?: { version: string; releaseDate: string; releaseNotes?: string };
   progress?: number; // 0-100
 }
@@ -96,7 +96,8 @@ const api = {
     ipcRenderer.invoke("set-system-settings", settings),
 
   // 文件对话框API
-  getDirectoryFiles: (directoryPath: string, extension?: string) => ipcRenderer.invoke("get-directory-files", directoryPath, extension),
+  getDirectoryFiles: (directoryPath: string, extension?: string) =>
+    ipcRenderer.invoke("get-directory-files", directoryPath, extension),
   openFileDialog: (options: any) =>
     ipcRenderer.invoke("open-file-dialog", options),
   showSaveDialog: (options: any) =>
@@ -109,7 +110,14 @@ const api = {
   stopWorkflow: () => ipcRenderer.invoke("stop-workflow"),
 
   getWorkflowContext: () => ipcRenderer.invoke("get-workflow-context"),
+  // 监听工作流上下文更新
+  onWorkflowContextUpdate: (callback: (context: any) => void) =>
+    ipcRenderer.on("workflow-context-update", (_event, context) =>
+      callback(context),
+    ),
 
+  removeWorkflowContextListener: (callback) =>
+    ipcRenderer.removeListener("workflow-context-update", callback),
   // 单节点执行API
   executeSingleNode: (node: any, connectKey: string) =>
     ipcRenderer.invoke("execute-single-node", node, connectKey),
@@ -130,41 +138,6 @@ const api = {
       connectKey,
       options,
     ),
-
-  // 测试计划相关API
-  createTestPlan: (request: any) =>
-    ipcRenderer.invoke("create-test-plan", request),
-  updateTestPlan: (request: any) =>
-    ipcRenderer.invoke("update-test-plan", request),
-  deleteTestPlan: (testPlanId: string) =>
-    ipcRenderer.invoke("delete-test-plan", testPlanId),
-  getTestPlans: (projectId?: string) =>
-    ipcRenderer.invoke("get-test-plans", projectId),
-  executeTestPlan: (request: any) =>
-    ipcRenderer.invoke("execute-test-plan", request),
-  getTestPlanExecutions: (testPlanId?: string) =>
-    ipcRenderer.invoke("get-test-plan-executions", testPlanId),
-  generateTestReport: (executionId: string) =>
-    ipcRenderer.invoke("generate-test-report", executionId),
-  getTestReports: (executionId?: string) =>
-    ipcRenderer.invoke("get-test-reports", executionId),
-
-  // 监听工作流上下文更新
-  onWorkflowContextUpdate: (callback: (context: any) => void) =>
-    ipcRenderer.on("workflow-context-update", (_event, context) =>
-      callback(context),
-    ),
-
-  removeWorkflowContextListener: (callback) =>
-    ipcRenderer.removeListener("workflow-context-update", callback),
-
-  // 监听测试计划执行更新
-  onTestPlanExecutionUpdate: (callback: (execution: any) => void) =>
-    ipcRenderer.on("test-plan-execution-update", (_event, execution) =>
-      callback(execution),
-    ),
-  removeTestPlanExecutionListener: (callback) =>
-    ipcRenderer.removeListener("test-plan-execution-update", callback),
 
   // 屏幕镜像相关API
   startCaptureScreen: (

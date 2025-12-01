@@ -32,8 +32,6 @@ import {
   Film,
   CheckCircle2,
   FileVideo,
-  ChevronLeft,
-  ChevronRight,
   Gauge,
   PlaySquare,
   Square,
@@ -42,10 +40,10 @@ import {
 
 import { Api } from "@/apis";
 import { toast } from "sonner";
-import { ProgressBar } from "@/components/ProgressBar.tsx";
+import { ProgressBar } from "@/components/ProgressBar";
 
-import Pagination from "@/components/video/pagination.tsx";
-// import { UploadVideoDialog } from "@/components/video/upload_video.tsx";
+import Pagination from "@/components/video/pagination";
+import { UploadVideoDialog } from "@/components/video/upload_video";
 import { FrameListOptimized } from "@/components/video/FrameListOptimized";
 
 type VideoStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
@@ -77,6 +75,7 @@ interface Task {
 }
 
 export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
+  console.log(selectedProject);
   const [selectedTask, setSelectedTask] = useState<string>("1");
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
@@ -203,7 +202,7 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
   const handleVideoSelect = async (video) => {
     setSelectedVideo(video);
     setIsFrameLoading(true);
-    
+
     try {
       const resp = await window.api.callApi(
         "GET",
@@ -253,7 +252,7 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
   const lastFrameScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollFrames = (
-    ref: React.RefObject<HTMLDivElement>,
+    ref: React.RefObject<HTMLDivElement | null>,
     direction: "left" | "right",
   ) => {
     if (ref.current) {
@@ -267,9 +266,10 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
 
   const handleNavigationBarClick = (
     e: React.MouseEvent<HTMLDivElement>,
-    ref: React.RefObject<HTMLDivElement>,
+    ref: React.RefObject<HTMLDivElement | null>,
     totalFrames?: number,
   ) => {
+    console.log(totalFrames);
     if (ref.current) {
       const rect = e.currentTarget.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
@@ -310,12 +310,14 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
             <div className="flex-1 overflow-y-auto py-4">
               <div className="flex items-center justify-between mb-1 flex-shrink-0 px-0.5">
                 <h3 className="text-sm font-medium">视频列表</h3>
-                {/*{selectedTask && (*/}
-                {/*  <UploadVideoDialog*/}
-                {/*    taskId={selectedTask}*/}
-                {/*    // onVideoUploaded={handleVideoUploaded}*/}
-                {/*  />*/}
-                {/*)}*/}
+                {selectedTask && (
+                  <UploadVideoDialog
+                    taskId={selectedTask}
+                    onVideoUploaded={() => {
+                      console.log("<UNK>");
+                    }}
+                  />
+                )}
               </div>
               {isVideoListLoading ? (
                 <div className="text-center py-20 text-muted-foreground">
@@ -492,7 +494,9 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
                     <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
                     </div>
-                    <p className="text-sm mb-1 font-medium">正在加载帧数据...</p>
+                    <p className="text-sm mb-1 font-medium">
+                      正在加载帧数据...
+                    </p>
                     <p className="text-xs opacity-70">
                       请稍候，正在获取视频帧信息
                     </p>
@@ -508,7 +512,9 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
                         onFrameSelect={handleSelectFirst}
                         frameType="first"
                         scrollRef={firstFrameScrollRef}
-                        onScroll={(direction) => scrollFrames(firstFrameScrollRef, direction)}
+                        onScroll={(direction) =>
+                          scrollFrames(firstFrameScrollRef, direction)
+                        }
                         onNavigationClick={handleNavigationBarClick}
                         isLoading={isFrameLoading}
                       />
@@ -522,7 +528,9 @@ export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
                         onFrameSelect={handleSelectLast}
                         frameType="last"
                         scrollRef={lastFrameScrollRef}
-                        onScroll={(direction) => scrollFrames(lastFrameScrollRef, direction)}
+                        onScroll={(direction) =>
+                          scrollFrames(lastFrameScrollRef, direction)
+                        }
                         onNavigationClick={handleNavigationBarClick}
                         isLoading={isFrameLoading}
                       />

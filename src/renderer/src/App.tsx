@@ -48,6 +48,7 @@ import { AiChat } from "@/components/Chat";
 import { Intelligence } from "@/components/Intelligence";
 import { FrameAnalyzer } from "@/components/FrameAnalyzer";
 import { Monitoring } from "@/components/Monitoring";
+import { QRCode } from "@/components/QRCode.tsx";
 
 // 定义设备类型
 interface Device {
@@ -178,6 +179,8 @@ function Main() {
         return <Monitoring />;
       case "toolbar":
         return <Toolbar selectedDevice={selectedDeviceId} />;
+      case "qrcode":
+        return <QRCode />;
       case "applications":
         return (
           <Application
@@ -206,6 +209,7 @@ function Main() {
       monitoring: "应用监控",
       "screen-mirror": "屏幕镜像",
       toolbar: "工具栏",
+      qrcode: "二维码生成",
       applications: "应用列表",
       settings: "设置",
     };
@@ -225,6 +229,7 @@ function Main() {
       monitoring: "用APP场景性能监控",
       "screen-mirror": "实时屏幕镜像和图像显示",
       toolbar: "工具栏功能",
+      qrcode: "创建普通、艺术或动态二维码",
       applications: "查看和管理设备上的应用",
       settings: "系统设置和个人偏好配置",
     };

@@ -23,4 +23,5 @@ export const Api = {
   videos: "/api/v1/sp/videos",
   videoStatus: "/api/v1/sp/video/status",
   videoFrames: "/api/v1/sp/video/frames",
+  updateVideoFrames: "/api/v1/sp/video/frames",
 };

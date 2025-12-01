@@ -5,7 +5,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,21 +17,21 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
-  DrawerTitle
+  DrawerTitle,
 } from "@/components/ui/drawer";
 import {
   Activity,
@@ -43,13 +43,13 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
-  Square
+  Square,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   XAxis,
@@ -58,15 +58,13 @@ import {
   Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
 } from "recharts";
 import {
   type ChartConfig,
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent
+  ChartTooltipContent,
 } from "@/components/ui/chart";
 
 type TaskStatus = "pending" | "running" | "completed" | "stopped" | "error";
@@ -95,19 +93,19 @@ const mockScripts = [
   { id: 1, name: "login-flow.ts", label: "登录流程" },
   { id: 2, name: "payment-flow.ts", label: "支付功能" },
   { id: 3, name: "cart-flow.ts", label: "购物车流程" },
-  { id: 4, name: "checkout-flow.ts", label: "结账流程" }
+  { id: 4, name: "checkout-flow.ts", label: "结账流程" },
 ];
 
 const mockApps = [
   { id: 1, name: "Web App", label: "Web App" },
   { id: 2, name: "Mobile App", label: "Mobile App" },
-  { id: 3, name: "Admin Panel", label: "Admin Panel" }
+  { id: 3, name: "Admin Panel", label: "Admin Panel" },
 ];
 
 const generateChartData = () => {
   return Array.from({ length: 24 }, (_, i) => ({
     time: `${i}:00`,
-    value: Math.floor(Math.random() * 100) + 20
+    value: Math.floor(Math.random() * 100) + 20,
   }));
 };
 
@@ -128,9 +126,9 @@ const mockMonitoringTasks: MonitoringTask[] = [
       memory: generateChartData(),
       temperature: generateChartData(),
       battery: generateChartData(),
-      traffic: generateChartData()
-    }
-  }
+      traffic: generateChartData(),
+    },
+  },
 ];
 
 export function Monitoring() {
@@ -147,7 +145,7 @@ export function Monitoring() {
   const [formData, setFormData] = useState({
     name: "",
     script: "",
-    app: ""
+    app: "",
   });
 
   const [monitorConfig, setMonitorConfig] = useState({
@@ -156,7 +154,7 @@ export function Monitoring() {
     temperature: false,
     battery: false,
     traffic: false,
-    interval: "1m"
+    interval: "1m",
   });
 
   const handleOpenDialog = (task?: MonitoringTask) => {
@@ -165,7 +163,7 @@ export function Monitoring() {
       setFormData({
         name: task.name,
         script: task.script,
-        app: task.app
+        app: task.app,
       });
     } else {
       setEditingId(null);
@@ -188,8 +186,8 @@ export function Monitoring() {
     if (editingId) {
       setTasks(
         tasks.map((task) =>
-          task.id === editingId ? { ...task, name: formData.name } : task
-        )
+          task.id === editingId ? { ...task, name: formData.name } : task,
+        ),
       );
     } else {
       const newTask: MonitoringTask = {
@@ -207,8 +205,8 @@ export function Monitoring() {
           memory: generateChartData(),
           temperature: generateChartData(),
           battery: generateChartData(),
-          traffic: generateChartData()
-        }
+          traffic: generateChartData(),
+        },
       };
       setTasks([...tasks, newTask]);
       setActiveTask(newTask);
@@ -227,8 +225,8 @@ export function Monitoring() {
   const handleToggleDeprecated = (id: number) => {
     setTasks(
       tasks.map((task) =>
-        task.id === id ? { ...task, deprecated: !task.deprecated } : task
-      )
+        task.id === id ? { ...task, deprecated: !task.deprecated } : task,
+      ),
     );
   };
 
@@ -241,8 +239,8 @@ export function Monitoring() {
     if (editingName.trim()) {
       setTasks(
         tasks.map((task) =>
-          task.id === editingId ? { ...task, name: editingName } : task
-        )
+          task.id === editingId ? { ...task, name: editingName } : task,
+        ),
       );
       if (activeTask?.id === editingId) {
         setActiveTask({ ...activeTask, name: editingName });
@@ -257,7 +255,7 @@ export function Monitoring() {
       const updatedTask = {
         ...activeTask,
         status: "completed" as TaskStatus,
-        endTime: new Date().toLocaleString()
+        endTime: new Date().toLocaleString(),
       };
       setTasks(tasks.map((t) => (t.id === activeTask.id ? updatedTask : t)));
       setActiveTask(null);
@@ -269,7 +267,7 @@ export function Monitoring() {
       const updatedTask = {
         ...activeTask,
         status: "stopped" as TaskStatus,
-        endTime: new Date().toLocaleString()
+        endTime: new Date().toLocaleString(),
       };
       setTasks(tasks.map((t) => (t.id === activeTask.id ? updatedTask : t)));
       setActiveTask(null);
@@ -281,7 +279,7 @@ export function Monitoring() {
       const updatedTask = {
         ...activeTask,
         status: "error" as TaskStatus,
-        endTime: new Date().toLocaleString()
+        endTime: new Date().toLocaleString(),
       };
       setTasks(tasks.map((t) => (t.id === activeTask.id ? updatedTask : t)));
       setActiveTask(null);
@@ -318,23 +316,23 @@ export function Monitoring() {
   const handleToggleReportData = (id: number) => {
     setTasks(
       tasks.map((task) =>
-        task.id === id ? { ...task, reportData: !task.reportData } : task
-      )
+        task.id === id ? { ...task, reportData: !task.reportData } : task,
+      ),
     );
   };
 
   const chartConfig = {
     visitors: {
-      label: "Visitors"
+      label: "Visitors",
     },
     desktop: {
       label: "Desktop",
-      color: "var(--chart-1)"
+      color: "var(--chart-1)",
     },
     mobile: {
       label: "Mobile",
-      color: "var(--chart-2)"
-    }
+      color: "var(--chart-2)",
+    },
   } satisfies ChartConfig;
 
   return (
@@ -388,10 +386,7 @@ export function Monitoring() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => handleOpenDialog()}
-                      size="sm"
-                    >
+                    <Button onClick={() => handleOpenDialog()} size="sm">
                       <Plus className="h-4 w-4" />
                       新建
                     </Button>
@@ -468,7 +463,13 @@ export function Monitoring() {
                           >
                             <AreaChart data={chartData}>
                               <defs>
-                                <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                                <linearGradient
+                                  id="colorCpu"
+                                  x1="0"
+                                  y1="0"
+                                  x2="0"
+                                  y2="1"
+                                >
                                   <stop
                                     offset="5%"
                                     stopColor="#3b82f6"
@@ -480,7 +481,6 @@ export function Monitoring() {
                                     stopOpacity={0}
                                   />
                                 </linearGradient>
-
                               </defs>
                               <CartesianGrid vertical={false} />
                               <XAxis
@@ -496,10 +496,13 @@ export function Monitoring() {
                                 content={
                                   <ChartTooltipContent
                                     labelFormatter={(value) => {
-                                      return new Date(value).toLocaleDateString("zh_CN", {
-                                        month: "short",
-                                        day: "numeric",
-                                      })
+                                      return new Date(value).toLocaleDateString(
+                                        "zh_CN",
+                                        {
+                                          month: "short",
+                                          day: "numeric",
+                                        },
+                                      );
                                     }}
                                     indicator="dot"
                                   />
@@ -516,7 +519,6 @@ export function Monitoring() {
                               {/*<ChartLegend content={<ChartLegendContent />} />*/}
                             </AreaChart>
                           </ChartContainer>
-
                         </CardContent>
                       </div>
                     )}
@@ -705,8 +707,7 @@ export function Monitoring() {
                   </div>
                 </div>
               ) : (
-                <div
-                  className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 py-20">
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 py-20">
                   <Zap className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-semibold mb-1">还没有开启监控</h3>
                   <p className="text-muted-foreground">赶快新建任务吧！</p>
@@ -979,7 +980,7 @@ export function Monitoring() {
                   { key: "memory", label: "内存使用率" },
                   { key: "temperature", label: "温度" },
                   { key: "battery", label: "电量" },
-                  { key: "traffic", label: "流量" }
+                  { key: "traffic", label: "流量" },
                 ].map((item) => (
                   <div key={item.key} className="flex items-center space-x-2">
                     <Checkbox
@@ -987,12 +988,12 @@ export function Monitoring() {
                       checked={
                         monitorConfig[
                           item.key as keyof typeof monitorConfig
-                          ] as boolean
+                        ] as boolean
                       }
                       onCheckedChange={(checked) =>
                         setMonitorConfig({
                           ...monitorConfig,
-                          [item.key]: checked
+                          [item.key]: checked,
                         })
                       }
                     />

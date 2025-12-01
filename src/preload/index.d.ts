@@ -10,7 +10,7 @@ interface OpenFileDialogOptions {
   defaultPath?: string;
   buttonLabel?: string;
   filters?: FileFilter[];
-  properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>;
+  properties?: Array<"openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles">;
 }
 
 interface SaveDialogOptions {
@@ -51,7 +51,7 @@ interface Api {
   respondToUpdatePrompt: (action: string) => void;
   installUpdateNow: () => Promise<void>;
   getTargets: () => Promise<Target[]>;
-  screencap: (connectKey: string,saveToLocal?:boolean) => Promise<string>;
+  screencap: (connectKey: string, saveToLocal?: boolean) => Promise<string>;
   hdcCommand: (commandType: string, connectKey: string, saveToLocal?: boolean, packageName?: string) => Promise<Record<string, string | boolean>>;
 
   // Bundle 相关 API
@@ -63,7 +63,7 @@ interface Api {
   cleanBundleData: (connectKey: string, bundleName: string) => Promise<void>;
   cleanBundleCache: (connectKey: string, bundleName: string) => Promise<void>;
   uninstallBundle: (connectKey: string, bundleName: string) => Promise<void>;
-  getTopBundle: (connectKey: string) => Promise<{name: string, pid: number}>;
+  getTopBundle: (connectKey: string) => Promise<{ name: string, pid: number }>;
 
   getToolSettings: () => Promise<any>;
   setToolSettings: (settings: object) => Promise<any>;
@@ -80,27 +80,19 @@ interface Api {
   stopWorkflow: () => Promise<{ success: boolean; error?: string }>;
   getWorkflowContext: () => Promise<any>;
   executeSingleNode: (node: any, connectKey: string) => Promise<{ success: boolean; error?: string }>;
-  
+
   // 测试用例执行API
-  executeTestCase: (testCase: any, connectKey: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  
-  // 批量执行测试用例API
-  executeBatchTestCases: (testCases: any[], connectKey: string, options?: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-  
-  // 测试计划相关API
-  createTestPlan: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-  updateTestPlan: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-  deleteTestPlan: (testPlanId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  getTestPlans: (projectId?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  executeTestPlan: (request: any) => Promise<{ success: boolean; data?: any; error?: string }>;
-  getTestPlanExecutions: (testPlanId?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  generateTestReport: (executionId: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  getTestReports: (executionId?: string) => Promise<{ success: boolean; data?: any; error?: string }>;
-  
   onWorkflowContextUpdate: (callback: (context: any) => void) => void;
   removeWorkflowContextListener: (callback: any) => void;
-  onTestPlanExecutionUpdate: (callback: (execution: any) => void) => void;
-  removeTestPlanExecutionListener: (callback: any) => void;
+  executeTestCase: (testCase: any, connectKey: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+
+  // 批量执行测试用例API
+  executeBatchTestCases: (testCases: any[], connectKey: string, options?: any) => Promise<{
+    success: boolean;
+    data?: any;
+    error?: string
+  }>;
+
 
   // 屏幕镜像相关API
   startCaptureScreen: (connectKey: string, scale: number) => Promise<{ success: boolean; error?: string }>;
@@ -114,8 +106,9 @@ interface Api {
 declare global {
 
   interface IElectronAPI extends ElectronAPI {
-    pf: string
+    pf: string;
   }
+
   interface Window {
     electron: IElectronAPI;
     api: Api;

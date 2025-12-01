@@ -1,8 +1,3 @@
-/**
- * 工作流执行状态管理Hook
- * 提供更好的执行状态管理和单节点执行支持
- */
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import type { NodeExecutionStatus } from "../../../types/workflow";

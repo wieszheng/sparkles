@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
+
 export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
   const { theme } = useTheme();
 

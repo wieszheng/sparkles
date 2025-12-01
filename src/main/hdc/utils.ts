@@ -22,7 +22,6 @@ export async function shell(
     /no such/i,
     /permission denied/i,
     /command not found/i,
-    /invalid/i,
     /timeout/i,
     /connection/i,
   ];

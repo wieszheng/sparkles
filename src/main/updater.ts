@@ -2,7 +2,6 @@ import { autoUpdater } from "electron-updater";
 import { BrowserWindow, ipcMain, app } from "electron";
 import log from "electron-log";
 
-// --- 类型定义 ---
 export interface UpdateStatus {
   status:
     | "checking"
@@ -13,12 +12,11 @@ export interface UpdateStatus {
     | "up-to-date"
     | "error";
   message: string;
-  // 可以添加版本信息
+
   versionInfo?: { version: string; releaseDate: string; releaseNotes?: string };
   progress?: number; // 0-100
 }
 
-// --- 状态发送函数 ---
 let mainWindow: BrowserWindow;
 
 function sendStatusToWindow(status: UpdateStatus) {
@@ -26,11 +24,9 @@ function sendStatusToWindow(status: UpdateStatus) {
   mainWindow?.webContents.send("update-status", status);
 }
 
-// --- 初始化函数 ---
 export function initializeAutoUpdater(win: BrowserWindow) {
   mainWindow = win;
 
-  // --- 日志配置 ---
   log.transports.file.level = "info";
   autoUpdater.logger = log;
 

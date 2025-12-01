@@ -1,9 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
 
-/**
- * 工作流执行相关的共享类型定义
- * 这些类型在主进程和渲染进程之间共享使用
- */
 export interface WorkflowData {
   id?: string;
   name: string;
