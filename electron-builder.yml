@@ -51,9 +51,9 @@ appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
 npmRebuild: false
 publish:
-  provider: github
-  owner: wieszheng
-  repo: sparkles
+  provider: generic
+  url: http://82.157.176.120:9000/code/0.1.0/
+  channel: latest
 releaseInfo:
   releaseNotes: |
     本次更新:
