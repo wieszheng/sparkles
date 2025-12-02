@@ -16,26 +16,26 @@ export async function shell(
   const output = (await connection.readAll()).toString();
 
   // 检查常见的错误模式
-  const errorPatterns = [
-    /failed/i,
-    /not found/i,
-    /no such/i,
-    /permission denied/i,
-    /command not found/i,
-    /timeout/i,
-    /connection/i,
-  ];
+  // const errorPatterns = [
+  //   /failed/i,
+  //   /not found/i,
+  //   /no such/i,
+  //   /permission denied/i,
+  //   /command not found/i,
+  //   /timeout/i,
+  //   /connection/i,
+  // ];
 
-  const combinedOutput = output.toLowerCase();
-
+  // const combinedOutput = output.toLowerCase();
+  // console.log('[Shell] output', output)
   // 检查是否包含错误模式
-  for (const pattern of errorPatterns) {
-    if (pattern.test(combinedOutput)) {
-      const errorMsg = `命令执行失败: ${combinedOutput}`;
-      console.error("HDC命令错误:", cmd, "输出:", combinedOutput);
-      throw new Error(errorMsg);
-    }
-  }
+  // for (const pattern of errorPatterns) {
+  //   if (pattern.test(combinedOutput)) {
+  //     const errorMsg = `命令执行失败: ${combinedOutput}`;
+  //     console.error("HDC命令错误:", cmd, "输出:", combinedOutput);
+  //     throw new Error(errorMsg);
+  //   }
+  // }
   if (isStr(cmd)) {
     return trim(output);
   }

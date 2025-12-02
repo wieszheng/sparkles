@@ -142,6 +142,6 @@ jobs:
             1. 打开 `.dmg` 文件
             2. 将应用拖拽到 Applications 文件夹
             3. 首次打开需要在"系统偏好设置 > 安全性与隐私"中允许
-            xattr -cr dist/*.dmg dist/*.zip
+            4. 提示已破损的软件时，执行：`xattr -r -d com.apple.quarantine /Applications/Sparkles.app`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
