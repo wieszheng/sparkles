@@ -17,8 +17,15 @@ import {
   Loader2,
   X,
   Sparkles,
+  Images,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type QRCodeType = "normal" | "art" | "dynamic";
 type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
@@ -30,12 +37,84 @@ interface QRCodeResult {
   type: QRCodeType;
 }
 
+interface PresetImage {
+  id: string;
+  name: string;
+  url: string;
+  type: "png" | "gif";
+  category: string;
+}
+
 const errorLevelDescriptions: Record<ErrorCorrectionLevel, string> = {
   L: "约7%的数据恢复能力",
   M: "约15%的数据恢复能力",
   Q: "约25%的数据恢复能力",
   H: "约30%的数据恢复能力",
 };
+
+// 预设图片列表 - PNG格式用于艺术二维码
+const presetPngImages: PresetImage[] = [
+  {
+    id: "png-1",
+    name: "小鸟",
+    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
+    type: "png",
+    category: "小鸟",
+  },
+  {
+    id: "png-2",
+    name: "渐变紫",
+    url: "http://82.157.176.120:9000/snicker/2024/11/22/IMG_1028.PNG",
+    type: "png",
+    category: "渐变",
+  },
+  {
+    id: "png-3",
+    name: "渐变橙",
+    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
+    type: "png",
+    category: "渐变",
+  },
+  {
+    id: "png-4",
+    name: "星空",
+    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
+    type: "png",
+    category: "自然",
+  },
+];
+
+// 预设图片列表 - GIF格式用于动态二维码
+const presetGifImages: PresetImage[] = [
+  {
+    id: "gif-1",
+    name: "波浪",
+    url: "/animated-wave-motion.jpg",
+    type: "gif",
+    category: "动效",
+  },
+  {
+    id: "gif-2",
+    name: "粒子",
+    url: "/particle-animation-effect.jpg",
+    type: "gif",
+    category: "动效",
+  },
+  {
+    id: "gif-3",
+    name: "光效",
+    url: "/light-beam-animation.jpg",
+    type: "gif",
+    category: "动效",
+  },
+  {
+    id: "gif-4",
+    name: "烟花",
+    url: "/fireworks-animation-celebration.jpg",
+    type: "gif",
+    category: "节日",
+  },
+];
 
 export function QRCode() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +137,9 @@ export function QRCode() {
   const [result, setResult] = useState<QRCodeResult | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+
   // 清理blob URL
   useEffect(() => {
     return () => {
@@ -66,6 +148,13 @@ export function QRCode() {
       }
     };
   }, [blobUrl]);
+
+  const handleSelectPreset = (preset: PresetImage) => {
+    setSelectedPresetId(preset.id);
+    setImagePreview(preset.url);
+    setUploadedImage(null);
+    setPresetPopoverOpen(false);
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -107,7 +196,11 @@ export function QRCode() {
       return;
     }
 
-    if ((activeTab === "art" || activeTab === "dynamic") && !uploadedImage) {
+    if (
+      (activeTab === "art" || activeTab === "dynamic") &&
+      !uploadedImage &&
+      !imagePreview
+    ) {
       toast.error(
         activeTab === "dynamic" ? "请上传 GIF 图片" : "请上传背景图片",
       );
@@ -117,8 +210,30 @@ export function QRCode() {
     setIsGenerating(true);
 
     try {
-      const apiUrl = "http://127.0.0.1:8000/api/v1/qr";
+      const apiUrl = "http://82.157.176.120:8000/api/v1";
       let response: Response;
+
+      // 如果使用预设图片，需要将 URL 转换为 File 对象
+      let imageFile = uploadedImage;
+      if (
+        !uploadedImage &&
+        imagePreview &&
+        (activeTab === "art" || activeTab === "dynamic")
+      ) {
+        try {
+          const imageResponse = await fetch(imagePreview);
+          const imageBlob = await imageResponse.blob();
+          const fileName =
+            activeTab === "dynamic" ? "preset.gif" : "preset.png";
+          imageFile = new File([imageBlob], fileName, {
+            type: activeTab === "dynamic" ? "image/gif" : "image/png",
+          });
+        } catch {
+          toast.error("预设图片加载失败，请重新选择");
+          setIsGenerating(false);
+          return;
+        }
+      }
 
       if (activeTab === "normal") {
         // 普通二维码生成
@@ -137,7 +252,7 @@ export function QRCode() {
         // 艺术二维码生成
         const formData = new FormData();
         formData.append("words", content);
-        formData.append("picture", uploadedImage!);
+        formData.append("picture", imageFile!);
         formData.append("version", version.toString());
         formData.append("level", errorLevel);
         formData.append("colorized", colorize.toString());
@@ -152,7 +267,7 @@ export function QRCode() {
         // 动态二维码生成
         const formData = new FormData();
         formData.append("words", content);
-        formData.append("gif_file", uploadedImage!);
+        formData.append("gif_file", imageFile!);
         formData.append("version", version.toString());
         formData.append("level", errorLevel);
         formData.append("colorized", colorize.toString());
@@ -235,7 +350,7 @@ export function QRCode() {
   };
 
   const isFormValid =
-    content.trim() && (activeTab === "normal" || uploadedImage);
+    content.trim() && (activeTab === "normal" || uploadedImage || imagePreview);
 
   // 渲染通用表单字段
   const renderCommonFields = () => (
@@ -315,9 +430,80 @@ export function QRCode() {
     <div className="space-y-4">
       {/* 图片上传 */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">
-          上传图片 <span className="text-destructive">*</span>
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">
+            上传图片 <span className="text-destructive">*</span>
+          </Label>
+          <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Images className="h-3.5 w-3.5" />
+                选择素材
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3" align="end">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">
+                    {activeTab === "dynamic" ? "GIF动图素材" : "PNG静态素材"}
+                  </p>
+                </div>
+
+                {/* 按分类分组展示 */}
+                {(() => {
+                  const images =
+                    activeTab === "dynamic" ? presetGifImages : presetPngImages;
+                  const categories = [
+                    ...new Set(images.map((img) => img.category)),
+                  ];
+                  return (
+                    <div className="space-y-2 max-h-64 overflow-y-auto px-2">
+                      {categories.map((category) => (
+                        <div key={category} className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground font-medium">
+                            {category}
+                          </p>
+                          <div className="flex gap-2 flex-wrap">
+                            {images
+                              .filter((img) => img.category === category)
+                              .map((preset) => (
+                                <div
+                                  key={preset.id}
+                                  className={`
+                                    relative cursor-pointer rounded-md overflow-hidden transition-all
+                                    w-12 h-12 flex-shrink-0
+                                    ring-1 ring-border/50 hover:ring-primary/50 hover:shadow-sm
+                                    ${selectedPresetId === preset.id ? "ring-2 ring-primary shadow-md" : ""}
+                                  `}
+                                  onClick={() => handleSelectPreset(preset)}
+                                  title={preset.name}
+                                >
+                                  <img
+                                    src={preset.url || "/placeholder.svg"}
+                                    alt={preset.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {selectedPresetId === preset.id && (
+                                    <div className="absolute top-0.5 right-0.5 bg-primary rounded-full p-0.5">
+                                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div
           className={`
             relative border-2 border-dashed rounded-lg p-3 transition-colors
