@@ -484,7 +484,7 @@ export function QRCode() {
         </div>
 
         {/* 底部固定操作按钮 */}
-        <div className="flex-shrink-0 px-4 py-3 bg-card/50 border-t border-border/50">
+        <div className="flex-shrink-0 px-4 py-3">
           <div className="flex justify-center gap-3">
             <Button
               variant="outline"
