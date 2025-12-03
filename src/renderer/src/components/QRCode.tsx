@@ -1,5 +1,4 @@
-import type React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,10 +30,12 @@ type QRCodeType = "normal" | "art" | "dynamic";
 type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
 
 interface QRCodeResult {
-  imageUrl: string;
+  imageUrl: string; // API返回的图片URL，同时用于预览和下载
   version: number;
   errorLevel: ErrorCorrectionLevel;
   type: QRCodeType;
+  objectName?: string;
+  fileSize?: number;
 }
 
 interface PresetImage {
@@ -88,37 +89,56 @@ const presetPngImages: PresetImage[] = [
 const presetGifImages: PresetImage[] = [
   {
     id: "gif-1",
-    name: "波浪",
-    url: "/animated-wave-motion.jpg",
+    name: "dog",
+    url: "http://82.157.176.120:9000/snicker/2024/dog.gif",
     type: "gif",
-    category: "动效",
+    category: "小狗",
   },
   {
     id: "gif-2",
-    name: "粒子",
-    url: "/particle-animation-effect.jpg",
+    name: "dog1",
+    url: "http://82.157.176.120:9000/snicker/2024/dog1.gif",
     type: "gif",
-    category: "动效",
+    category: "小狗",
   },
   {
     id: "gif-3",
-    name: "光效",
-    url: "/light-beam-animation.jpg",
+    name: "doro",
+    url: "http://82.157.176.120:9000/snicker/2024/doro.gif",
     type: "gif",
-    category: "动效",
+    category: "Doro",
   },
   {
     id: "gif-4",
-    name: "烟花",
-    url: "/fireworks-animation-celebration.jpg",
+    name: "a",
+    url: "http://82.157.176.120:9000/snicker/2024/a.gif",
     type: "gif",
-    category: "节日",
+    category: "Doro",
+  },
+  {
+    id: "gif-5",
+    name: "b",
+    url: "http://82.157.176.120:9000/snicker/2024/b.gif",
+    type: "gif",
+    category: "Doro",
+  },
+  {
+    id: "gif-6",
+    name: "dog3",
+    url: "http://82.157.176.120:9000/snicker/2024/ka.gif",
+    type: "gif",
+    category: "小狗",
+  },
+  {
+    id: "gif-6",
+    name: "c",
+    url: "http://82.157.176.120:9000/snicker/2024/c.gif",
+    type: "gif",
+    category: "彩虹小白马",
   },
 ];
 
 export function QRCode() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // 通用状态
   const [activeTab, setActiveTab] = useState<QRCodeType>("art");
   const [content, setContent] = useState("");
@@ -135,19 +155,9 @@ export function QRCode() {
   // 生成状态
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<QRCodeResult | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-
-  // 清理blob URL
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, [blobUrl]);
 
   const handleSelectPreset = (preset: PresetImage) => {
     setSelectedPresetId(preset.id);
@@ -156,38 +166,80 @@ export function QRCode() {
     setPresetPopoverOpen(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = async () => {
+    try {
+      const options = {
+        title: activeTab === "dynamic" ? "选择GIF文件" : "选择图片文件",
+        filters: [
+          {
+            name: activeTab === "dynamic" ? "GIF Files" : "Image Files",
+            extensions:
+              activeTab === "dynamic" ? ["gif"] : ["png", "jpg", "jpeg", "bmp"],
+          },
+        ],
+        properties: ["openFile" as const],
+      };
 
-    const validFormats =
-      activeTab === "dynamic"
-        ? ["image/gif"]
-        : ["image/png", "image/jpeg", "image/bmp"];
+      const result = await window.api.openFileDialog(options);
 
-    if (!validFormats.includes(file.type)) {
-      toast(
+      if (
+        result.canceled ||
+        !result.filePaths ||
+        result.filePaths.length === 0
+      ) {
+        return; // 用户取消了选择
+      }
+
+      const filePath = result.filePaths[0];
+
+      // 使用Electron的API读取文件内容
+      const fileResult = await window.api.readFile(filePath);
+
+      if (!fileResult.success || !fileResult.data) {
+        toast.error("文件读取失败，请重试");
+        return;
+      }
+
+      // 将数字数组转换为Blob
+      const buffer = new Uint8Array(fileResult.data);
+      const blob = new Blob([buffer], { type: fileResult.mimeType });
+
+      // 获取文件名
+      const fileName = fileResult.fileName || "";
+
+      // 创建File对象
+      const file = new File([blob], fileName, { type: fileResult.mimeType });
+
+      // 验证文件格式
+      const validFormats =
         activeTab === "dynamic"
-          ? "请上传 GIF 格式的图片"
-          : "请上传 PNG、JPG 或 BMP 格式的图片",
-      );
-      return;
-    }
+          ? ["image/gif"]
+          : ["image/png", "image/jpeg", "image/bmp"];
 
-    setUploadedImage(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+      if (!validFormats.includes(file.type)) {
+        toast(
+          activeTab === "dynamic"
+            ? "请上传 GIF 格式的图片"
+            : "请上传 PNG、JPG 或 BMP 格式的图片",
+        );
+        return;
+      }
+
+      setUploadedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("文件选择失败:", error);
+      toast.error("文件选择失败，请重试");
+    }
   };
 
   const clearImage = () => {
     setUploadedImage(null);
     setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
   const handleGenerate = async () => {
@@ -281,26 +333,26 @@ export function QRCode() {
       }
 
       if (response.ok) {
-        const blob = await response.blob();
-        const imageUrl = URL.createObjectURL(blob);
+        const responseData = await response.json();
 
-        // 清理之前的blob URL
-        if (blobUrl) {
-          URL.revokeObjectURL(blobUrl);
+        if (responseData.success) {
+          setResult({
+            imageUrl: responseData.url, // 直接使用API返回的URL
+            version: responseData.version || version,
+            errorLevel:
+              (responseData.level as ErrorCorrectionLevel) || errorLevel,
+            type: activeTab,
+            objectName: responseData.object_name,
+            fileSize: responseData.file_size,
+          });
+
+          toast.success("二维码已成功生成");
+        } else {
+          toast.error(responseData.message || "二维码生成失败");
         }
-
-        setBlobUrl(imageUrl);
-        setResult({
-          imageUrl,
-          version,
-          errorLevel,
-          type: activeTab,
-        });
-
-        toast.success("二维码已成功生成");
       } else {
         const error = await response.json();
-        toast.error(error.detail || "二维码生成失败");
+        toast.error(error.message || error.detail || "二维码生成失败");
       }
     } catch (error) {
       console.error("生成二维码时出错:", error);
@@ -320,32 +372,55 @@ export function QRCode() {
     setContrast(1.0);
     setBrightness(1.0);
     setResult(null);
-
-    // 清理blob URL
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      setBlobUrl(null);
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!result) return;
-
     try {
-      const link = document.createElement("a");
-      link.href = result.imageUrl;
-      link.download = `qrcode-${result.type}-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 根据二维码类型确定文件扩展名和默认文件名
+      const isGif = result.type === "dynamic";
+      const fileExtension = isGif ? "gif" : "png";
 
-      toast.success("二维码下载成功");
+      // 使用API返回的objectName作为默认文件名，如果没有则使用默认格式
+      const defaultFileName = result.objectName
+        ? result.objectName.endsWith(`.${fileExtension}`)
+          ? result.objectName
+          : `${result.objectName}.${fileExtension}`
+        : `qrcode-${result.type}-${Date.now()}.${fileExtension}`;
+
+      const options = {
+        title: "保存二维码",
+        defaultPath: defaultFileName,
+        filters: [
+          {
+            name: isGif ? "GIF Files" : "PNG Files",
+            extensions: [fileExtension],
+          },
+        ],
+      };
+
+      const saveResult = await window.api.showSaveDialog(options);
+      if (saveResult.canceled || !saveResult.filePath) {
+        return; // 用户取消了保存
+      }
+
+      // 获取图片数据
+      const imageResponse = await fetch(result.imageUrl);
+      const blob = await imageResponse.blob();
+
+      // 转换为ArrayBuffer
+      const arrayBuffer = await blob.arrayBuffer();
+
+      // 使用Electron的API保存文件
+      await window.api.saveFile(
+        saveResult.filePath,
+        Array.from(new Uint8Array(arrayBuffer)),
+      );
+
+      toast.success("二维码保存成功");
     } catch (error) {
-      toast.error(`下载失败，请重试：${error}`);
+      console.error("保存失败:", error);
+      toast.error(`保存失败，请重试：${error}`);
     }
   };
 
@@ -532,12 +607,10 @@ export function QRCode() {
           ) : (
             <div
               className="flex flex-col  items-center justify-center py-4 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleImageUpload}
             >
               <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                点击或拖拽上传图片
-              </p>
+              <p className="text-sm text-muted-foreground">点击选择图片</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {activeTab === "dynamic"
                   ? "支持 GIF 格式"
@@ -545,13 +618,6 @@ export function QRCode() {
               </p>
             </div>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={activeTab === "dynamic" ? ".gif" : ".png,.jpg,.jpeg,.bmp"}
-            onChange={handleImageUpload}
-            className="hidden"
-          />
         </div>
       </div>
 
@@ -721,17 +787,17 @@ export function QRCode() {
             <div className="flex-1 flex flex-col">
               {/* 二维码预览 */}
               <div className="flex-1 flex items-center justify-center">
-                <div className="bg-white p-6 rounded-xl shadow-lg">
+                <div className="bg-white p-1 rounded-xl shadow-lg">
                   <img
                     src={result.imageUrl || "/placeholder.svg"}
                     alt="生成的二维码"
-                    className="w-52 h-52 object-contain"
+                    className="w-60 h-60 object-contain"
                   />
                 </div>
               </div>
 
               {/* 参数信息 */}
-              <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
                   <p className="text-xs text-muted-foreground mb-1">类型</p>
                   <p className="text-sm font-medium">
@@ -746,10 +812,28 @@ export function QRCode() {
                   <p className="text-xs text-muted-foreground mb-1">版本</p>
                   <p className="text-sm font-medium">{result.version}</p>
                 </div>
+              </div>
+
+              {/* 第二行信息 */}
+              <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
-                  <p className="text-xs text-muted-foreground mb-1">纠错</p>
+                  <p className="text-xs text-muted-foreground mb-1">纠错级别</p>
                   <p className="text-sm font-medium">{result.errorLevel}</p>
                 </div>
+                {result.fileSize && (
+                  <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      文件大小
+                    </p>
+                    <p className="text-sm font-medium">
+                      {result.fileSize < 1024
+                        ? `${result.fileSize} B`
+                        : result.fileSize < 1024 * 1024
+                          ? `${(result.fileSize / 1024).toFixed(1)} KB`
+                          : `${(result.fileSize / (1024 * 1024)).toFixed(1)} MB`}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* 下载按钮 */}

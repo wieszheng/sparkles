@@ -74,6 +74,12 @@ interface Api {
   getDirectoryFiles: (directoryPath: string, extension?: string) => Promise<string[]>;
   openFileDialog: (options: OpenFileDialogOptions) => Promise<OpenFileDialogResult>;
   showSaveDialog: (options: SaveDialogOptions) => Promise<SaveDialogResult>;
+  
+  // 文件操作API
+  saveFile: (filePath: string, data: number[]) => Promise<{ success: boolean }>;
+  
+  // 读取本地文件API
+  readFile: (filePath: string) => Promise<{ success: boolean; data?: number[]; fileName?: string; mimeType?: string }>;
 
   // 工作流执行相关API
   executeWorkflow: (nodes: any[], edges: any[], connectKey: string) => Promise<{ success: boolean; error?: string }>;

@@ -425,4 +425,69 @@ export function initIpcHandlers(): void {
       return { canceled: true };
     }
   });
+
+  // ==================== 文件保存相关 IPC 处理程序 ====================
+  ipcMain.handle("save-file", async (_, filePath: string, data: number[]) => {
+    try {
+      // 将数字数组转换为Buffer
+      const buffer = Buffer.from(data);
+      
+      // 确保目录存在
+      const dir = path.dirname(filePath);
+      await fs.ensureDir(dir);
+      
+      // 写入文件
+      await fs.writeFile(filePath, buffer);
+      
+      log.info("[文件保存成功]:", filePath);
+      return { success: true };
+    } catch (error) {
+      log.error("文件保存失败:", error);
+      throw error;
+    }
+  });
+
+  // ==================== 文件读取相关 IPC 处理程序 ====================
+  ipcMain.handle("read-file", async (_, filePath: string) => {
+    try {
+      // 检查文件是否存在
+      if (!await fs.pathExists(filePath)) {
+        throw new Error("文件不存在");
+      }
+      
+      // 读取文件内容
+      const buffer = await fs.readFile(filePath);
+      const fileName = path.basename(filePath);
+      
+      // 简单的MIME类型检测
+      const ext = path.extname(fileName).toLowerCase();
+      let mimeType = "application/octet-stream";
+      switch (ext) {
+        case ".png":
+          mimeType = "image/png";
+          break;
+        case ".jpg":
+        case ".jpeg":
+          mimeType = "image/jpeg";
+          break;
+        case ".gif":
+          mimeType = "image/gif";
+          break;
+        case ".bmp":
+          mimeType = "image/bmp";
+          break;
+      }
+      
+      log.info("[文件读取成功]:", filePath);
+      return { 
+        success: true, 
+        data: Array.from(buffer), 
+        fileName, 
+        mimeType 
+      };
+    } catch (error) {
+      log.error("文件读取失败:", error);
+      return { success: false };
+    }
+  });
 }

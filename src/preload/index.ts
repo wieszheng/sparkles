@@ -102,6 +102,14 @@ const api = {
     ipcRenderer.invoke("open-file-dialog", options),
   showSaveDialog: (options: any) =>
     ipcRenderer.invoke("show-save-dialog", options),
+  
+  // 文件操作API
+  saveFile: (filePath: string, data: ArrayBuffer) =>
+    ipcRenderer.invoke("save-file", filePath, Array.from(new Uint8Array(data))),
+  
+  // 读取本地文件API
+  readFile: (filePath: string) =>
+    ipcRenderer.invoke("read-file", filePath),
 
   // 工作流执行相关API
   executeWorkflow: (nodes: any[], edges: any[], connectKey: string) =>
