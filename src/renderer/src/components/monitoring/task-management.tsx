@@ -1,0 +1,180 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
+  Eye,
+  Pause,
+  Play,
+  Trash2,
+  ListTodo,
+} from "lucide-react";
+import type { MonitoringTask } from "./types";
+import { TaskStatusBadge } from "./task-status-badge";
+
+interface TaskManagementProps {
+  tasks: MonitoringTask[];
+  onViewTask: (task: MonitoringTask) => void;
+  onToggleTaskStatus: (id: number) => void;
+  onDeleteTask: (id: number) => void;
+}
+
+export function TaskManagement({
+  tasks,
+  onViewTask,
+  onToggleTaskStatus,
+  onDeleteTask,
+}: TaskManagementProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || task.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-3">
+      {/* 搜索和筛选 */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="搜索任务..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-xs"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[120px] h-8 text-xs">
+            <Filter className="h-3.5 w-3.5 mr-1.5" />
+            <SelectValue placeholder="状态" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="running">运行中</SelectItem>
+            <SelectItem value="completed">已完成</SelectItem>
+            <SelectItem value="pending">待执行</SelectItem>
+            <SelectItem value="stopped">已停止</SelectItem>
+            <SelectItem value="error">异常</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 任务列表 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {filteredTasks.map((task) => (
+          <div
+            key={task.id}
+            className="rounded-md border border-border/30 bg-muted/10 p-3 hover:border-border/50 transition-colors"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium text-foreground truncate">
+                  {task.name}
+                </h3>
+                <p className="text-xs text-muted-foreground truncate">
+                  {task.script}
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onViewTask(task)}>
+                    <Eye className="h-3.5 w-3.5 mr-2" />
+                    查看详情
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onToggleTaskStatus(task.id)}>
+                    {task.status === "running" ? (
+                      <>
+                        <Pause className="h-3.5 w-3.5 mr-2" />
+                        暂停任务
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5 mr-2" />
+                        启动任务
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDeleteTask(task.id)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    删除
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center gap-1.5 mb-2">
+              <TaskStatusBadge status={task.status} />
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {task.app}
+              </Badge>
+            </div>
+
+            <div className="space-y-1 text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <span>创建</span>
+                <span>{task.createdAt}</span>
+              </div>
+              {task.startTime && (
+                <div className="flex items-center justify-between">
+                  <span>开始</span>
+                  <span>{task.startTime}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-border/20 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">
+                数据上报
+              </span>
+              <div
+                className={`h-1.5 w-1.5 rounded-full ${task.reportData ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredTasks.length === 0 && (
+        <div className="rounded-md border border-dashed border-border/40 py-8 text-center">
+          <ListTodo className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">没有找到匹配的任务</p>
+        </div>
+      )}
+    </div>
+  );
+}
