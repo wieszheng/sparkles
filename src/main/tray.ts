@@ -1,27 +1,28 @@
-import { Tray, type BrowserWindow, nativeTheme } from "electron";
+import { Tray, type BrowserWindow, nativeImage } from "electron";
 import path from "path";
 
 let tray: Tray;
 
 function getIconPath() {
-  const isDarkMode = nativeTheme.shouldUseDarkColors;
-  return path.join(
-    __dirname,
-    "..",
-    "..",
-    "resources",
-    process.platform === "darwin"
-      ? isDarkMode
-        ? "icon-dark.png"
-        : "icon-light.png"
-      : "icon.png",
-  );
+  const platform = process.platform;
+
+  if (platform === "darwin") {
+    // macOS 使用 Template 图标
+    return path.join(__dirname, "..", "..", "resources", "iconTemplate.png");
+  } else {
+    return path.join(__dirname, "..", "..", "resources", "icon.png");
+  }
 }
 
 export function setUpTray(mainWindow: BrowserWindow) {
   if (tray) tray.destroy();
-
   const iconPath = getIconPath();
+  const icon = nativeImage.createFromPath(iconPath);
+
+  if (process.platform === "darwin") {
+    icon.setTemplateImage(true);
+  }
+
   tray = new Tray(iconPath);
 
   // 设置托盘标题（仅 macOS）
@@ -41,13 +42,6 @@ export function setUpTray(mainWindow: BrowserWindow) {
     }
   });
 }
-
-// 监听主题变化
-nativeTheme.on("updated", () => {
-  if (tray) {
-    tray.setImage(getIconPath()); // 动态更新图标
-  }
-});
 
 export function destroyTray() {
   tray.destroy();

@@ -92,9 +92,12 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
         // 设备断开时清除画布内容
         const canvas = canvasRef.current;
         if (canvas) {
-          const ctx = canvas.getContext("2d");
+          const ctx = canvas.getContext("2d", { alpha: true });
           if (ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 重置画布尺寸以清除所有内容
+            canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+            canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
           }
         }
 
@@ -142,7 +145,7 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
       canvas.height = displayHeight * devicePixelRatio;
     }
     const ctx = canvas.getContext("2d", {
-      alpha: false,
+      alpha: true,
       desynchronized: true,
     });
     if (!ctx) return;
@@ -152,6 +155,7 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
       // 更新屏幕尺寸信息
       setScreenSize({ width: img.width, height: img.height });
 
+      // 清除整个画布
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 计算缩放比例，保持宽高比并确保整数像素
@@ -209,9 +213,12 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
       // 清除画布内容
       const canvas = canvasRef.current;
       if (canvas) {
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { alpha: true });
         if (ctx) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // 重置画布尺寸以清除所有内容
+          canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+          canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
         }
       }
     } catch (error) {
@@ -245,7 +252,7 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
       transition={{ duration: 0.5 }}
       className="relative h-full"
     >
-      <div className="absolute inset-0 bg-card rounded-lg overflow-hidden">
+      <div className="absolute inset-0 bg-card rounded-lg">
         <canvas
           ref={canvasRef}
           width={1200}

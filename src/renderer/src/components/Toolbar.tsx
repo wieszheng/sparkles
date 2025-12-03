@@ -9,14 +9,44 @@ import {
   Play,
   Power,
   Square,
+  Image as ImageIcon,
+  Download,
+  Trash2,
+  Check,
+  X,
+  Layers,
+  Eye,
+  GripVertical,
+  ArrowUpDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
+
+interface ScreenshotItem {
+  id: string;
+  url: string;
+  timestamp: Date;
+  deviceName: string;
+}
+
+interface StitchConfig {
+  direction: "horizontal" | "vertical";
+  spacing: number;
+  backgroundColor: string;
+}
 
 export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
   const { theme } = useTheme();
@@ -29,6 +59,23 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
 
   const [currentCommandIndex, setCurrentCommandIndex] = useState(0);
   const [direction, setDirection] = useState(0); // 1 for next, -1 for prev
+
+  // 截图相关状态
+  const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
+  const [selectedScreenshots, setSelectedScreenshots] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isStitching, setIsStitching] = useState(false);
+  const [stitchOrder, setStitchOrder] = useState<string[]>([]);
+  const [stitchConfig, setStitchConfig] = useState<StitchConfig>({
+    direction: "horizontal",
+    spacing: 90,
+    backgroundColor: "#ffffff",
+  });
+  const [stitchedImage, setStitchedImage] = useState<string | null>(null);
+  const [showStitchPreview, setShowStitchPreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showSinglePreview, setShowSinglePreview] = useState(false);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -47,8 +94,29 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
     }
     setLoading("screenshot", true);
     try {
-      await window.api.hdcCommand("screencap", selectedDevice, true);
-      toast.success("截图成功");
+      const result = await window.api.screencap(selectedDevice, false);
+      console.log("result", result);
+      // 直接使用API返回的base64图片数据
+      if (result) {
+        const newScreenshot: ScreenshotItem = {
+          id: `screenshot-${Date.now()}`,
+          url: `data:image/png;base64,${result}`,
+          timestamp: new Date(),
+          deviceName: selectedDevice,
+        };
+
+        // 新截图插入到列表前面，确保最新的截图在最前面
+        // 使用排序确保时间戳倒序，最新的在前
+        setScreenshots((prev) => {
+          const newList = [newScreenshot, ...prev];
+          return newList.sort(
+            (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+          );
+        });
+        toast.success("截图成功");
+      } else {
+        toast.error("截图数据获取失败");
+      }
     } catch (error) {
       toast.error("截图失败", error || "");
     } finally {
@@ -155,6 +223,153 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
     );
   };
 
+  // 截图选择相关函数
+  const toggleScreenshotSelection = (id: string) => {
+    setSelectedScreenshots((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllScreenshots = () => {
+    if (
+      selectedScreenshots.size === screenshots.length &&
+      screenshots.length > 0
+    ) {
+      setSelectedScreenshots(new Set());
+    } else {
+      setSelectedScreenshots(new Set(screenshots.map((s) => s.id)));
+    }
+  };
+
+  const deleteScreenshot = (id: string) => {
+    setScreenshots((prev) => prev.filter((s) => s.id !== id));
+    setSelectedScreenshots((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
+    toast.success("截图已删除");
+  };
+
+  const clearAllScreenshots = () => {
+    if (confirm("确定要删除所有截图吗？")) {
+      setScreenshots([]);
+      setSelectedScreenshots(new Set());
+      toast.success("所有截图已删除");
+    }
+  };
+
+  // 图片拼接函数
+  const stitchImages = async () => {
+    if (selectedScreenshots.size === 0) {
+      toast.error("请至少选择一张截图");
+      return;
+    }
+
+    setIsStitching(true);
+    try {
+      // 按照stitchOrder排序，如果stitchOrder为空则使用原始顺序
+      const selectedIds =
+        stitchOrder.length > 0 ? stitchOrder : Array.from(selectedScreenshots);
+      const selectedImages = selectedIds
+        .map((id) => screenshots.find((s) => s.id === id))
+        .filter((screenshot): screenshot is ScreenshotItem =>
+          Boolean(screenshot),
+        );
+
+      // 创建canvas进行图片拼接
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("无法创建canvas上下文");
+
+      const images = await Promise.all(
+        selectedImages.map(async (screenshot) => {
+          const img = new Image();
+          img.src = screenshot.url;
+          await new Promise((resolve) => (img.onload = resolve));
+          return img;
+        }),
+      );
+
+      // 计算画布尺寸
+      if (stitchConfig.direction === "horizontal") {
+        canvas.width = images.reduce(
+          (sum, img) => sum + img.width + stitchConfig.spacing,
+          -stitchConfig.spacing,
+        );
+        canvas.height = Math.max(...images.map((img) => img.height));
+      } else {
+        canvas.width = Math.max(...images.map((img) => img.width));
+        canvas.height = images.reduce(
+          (sum, img) => sum + img.height + stitchConfig.spacing,
+          -stitchConfig.spacing,
+        );
+      }
+
+      // 设置背景色
+      ctx.fillStyle = stitchConfig.backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 绘制图片
+      let offsetX = 0;
+      let offsetY = 0;
+
+      images.forEach((img, index) => {
+        if (stitchConfig.direction === "horizontal") {
+          ctx.drawImage(img, offsetX, 0);
+          offsetX +=
+            img.width + (index < images.length - 1 ? stitchConfig.spacing : 0);
+        } else {
+          ctx.drawImage(img, 0, offsetY);
+          offsetY +=
+            img.height + (index < images.length - 1 ? stitchConfig.spacing : 0);
+        }
+      });
+
+      // 转换为base64
+      const dataUrl = canvas.toDataURL("image/png");
+      setStitchedImage(dataUrl);
+      setShowStitchPreview(true);
+      toast.success("图片拼接成功");
+    } catch (error) {
+      toast.error("图片拼接失败：" + (error as Error).message);
+    } finally {
+      setIsStitching(false);
+    }
+  };
+
+  const downloadStitchedImage = () => {
+    if (!stitchedImage) return;
+
+    const link = document.createElement("a");
+    link.download = `stitched-${Date.now()}.png`;
+    link.href = stitchedImage;
+    link.click();
+    toast.success("拼接图片已下载");
+  };
+
+  // 单图预览函数
+  const showSingleImagePreview = (screenshot: ScreenshotItem) => {
+    setPreviewImage(screenshot.url);
+    setShowSinglePreview(true);
+  };
+
+  const downloadSingleImage = () => {
+    if (!previewImage) return;
+
+    const link = document.createElement("a");
+    link.download = `screenshot-${Date.now()}.png`;
+    link.href = previewImage;
+    link.click();
+    toast.success("截图已下载");
+  };
+
   const commandCards = [
     {
       id: "screenshot",
@@ -220,8 +435,387 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // 渲染截图历史列表
+  const renderScreenshotHistory = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.2 }}
+      className="h-[calc(100vh-428px)] flex flex-col space-y-4"
+    >
+      {/* 截图列表头部和工具栏合并一行 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* 左侧：标题、全选、统计信息 */}
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold ml-1">全选</h3>
+          {screenshots.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={
+                  selectedScreenshots.size === screenshots.length &&
+                  screenshots.length > 0
+                }
+                onCheckedChange={selectAllScreenshots}
+              />
+              <Badge variant="secondary">{screenshots.length}</Badge>
+              {selectedScreenshots.size > 0 && (
+                <Badge variant="default">
+                  已选择 {selectedScreenshots.size} 张
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 中间：拼接工具栏 */}
+        {screenshots.length > 0 && (
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">方向:</label>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-sm ${stitchConfig.direction === "vertical" ? "font-medium" : "text-muted-foreground"}`}
+                >
+                  纵向
+                </span>
+                <Switch
+                  checked={stitchConfig.direction === "horizontal"}
+                  onCheckedChange={(checked) =>
+                    setStitchConfig((prev) => ({
+                      ...prev,
+                      direction: checked ? "horizontal" : "vertical",
+                    }))
+                  }
+                />
+                <span
+                  className={`text-sm ${stitchConfig.direction === "horizontal" ? "font-medium" : "text-muted-foreground"}`}
+                >
+                  横向
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">间距:</label>
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={stitchConfig.spacing}
+                onChange={(e) =>
+                  setStitchConfig((prev) => ({
+                    ...prev,
+                    spacing: parseInt(e.target.value) || 0,
+                  }))
+                }
+                className="w-16 px-2 py-1 text-sm border rounded"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 右侧：控制按钮 */}
+        <div className="flex items-center gap-1">
+          {screenshots.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllScreenshots}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {selectedScreenshots.size > 1 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <ArrowUpDown className="h-4 w-4" />
+                  排序
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-100" align="end">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">
+                    拼接顺序（拖拽调整）
+                  </label>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    {Array.from(selectedScreenshots).map((id, index) => {
+                      const screenshot = screenshots.find((s) => s.id === id);
+                      if (!screenshot) return null;
+                      return (
+                        <div
+                          key={id}
+                          className="flex-shrink-0 w-22 h-24 bg-muted/50 rounded-lg border relative group cursor-move"
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(
+                              "text/plain",
+                              index.toString(),
+                            );
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add(
+                              "border-primary",
+                              "bg-primary/10",
+                            );
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.classList.remove(
+                              "border-primary",
+                              "bg-primary/10",
+                            );
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove(
+                              "border-primary",
+                              "bg-primary/10",
+                            );
+                            const dragIndex = parseInt(
+                              e.dataTransfer.getData("text/plain"),
+                            );
+                            const selectedIds = Array.from(selectedScreenshots);
+                            if (dragIndex !== index) {
+                              const [movedItem] = selectedIds.splice(
+                                dragIndex,
+                                1,
+                              );
+                              selectedIds.splice(index, 0, movedItem);
+                              setSelectedScreenshots(new Set(selectedIds));
+                              setStitchOrder(selectedIds);
+                            }
+                          }}
+                        >
+                          <img
+                            src={screenshot.url}
+                            alt="截图"
+                            className="w-full h-full object-contain p-1 rounded"
+                          />
+                          <div className="absolute top-1 left-1 bg-primary rounded text-primary-foreground text-xs w-4 h-4 flex items-center justify-center">
+                            {index + 1}
+                          </div>
+                          <div className="absolute top-1 right-1">
+                            <GripVertical className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {screenshots.length > 0 && (
+            <Button
+              size="sm"
+              onClick={stitchImages}
+              disabled={selectedScreenshots.size === 0 || isStitching}
+            >
+              {isStitching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  <Layers className="h-4 w-4" />
+                  合成
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* 截图横向列表 */}
+      {screenshots.length > 0 && (
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full overflow-x-auto overflow-y-auto pb-2">
+            <div className="flex gap-3 min-w-max p-1">
+              {screenshots.map((screenshot, index) => (
+                <motion.div
+                  key={screenshot.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className={`relative cursor-pointer rounded-sm transition-all flex-shrink-0 group ${
+                    selectedScreenshots.has(screenshot.id)
+                      ? "ring-2 ring-primary shadow-sm scale-101"
+                      : "ring-1 ring-border hover:ring-primary/50"
+                  }`}
+                  onClick={() => toggleScreenshotSelection(screenshot.id)}
+                >
+                  <div className="w-36 bg-muted/50 relative overflow-hidden">
+                    <img
+                      src={screenshot.url}
+                      alt="截图"
+                      className="w-full h-full object-contain p-1 rounded-lg"
+                    />
+                    {selectedScreenshots.has(screenshot.id) && (
+                      <div className="absolute top-2 right-2 bg-primary rounded-full p-1 shadow-md">
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      </div>
+                    )}
+                    {/* 预览按钮 */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 p-0 bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm rounded-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showSingleImagePreview(screenshot);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {/* 删除按钮 */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-2 left-2 h-6 w-6 p-0 bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteScreenshot(screenshot.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                  {/* <div className="p-2 bg-background/80 backdrop-blur-sm">
+                    <p className="text-xs text-muted-foreground/70 text-center">
+                      {new Date(screenshot.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div> */}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 空状态 */}
+      {screenshots.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12 text-muted-foreground"
+        >
+          <ImageIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p className="text-sm">暂无截图</p>
+          <p className="text-xs mt-1">点击上方截图按钮开始</p>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+
+  // 渲染单图预览
+  const renderSinglePreview = () => {
+    if (!showSinglePreview || !previewImage) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={() => setShowSinglePreview(false)}
+      >
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          className="rounded-lg w-full max-w-full h-[90vh] flex flex-col overflow-hidden"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSinglePreview(false);
+          }}
+        >
+          <div className="p-3 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-semibold ml-1">单图</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSinglePreview(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto p-2">
+            <div className="w-full h-full flex items-center justify-center">
+              <img
+                src={previewImage}
+                alt="截图预览"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </div>
+          </div>
+          <div className="p-3 flex-shrink-0">
+            <div className="flex justify-center">
+              <Button onClick={downloadSingleImage} size="sm">
+                <Download className="h-4 w-4" />
+                下载截图
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
+  // 渲染拼接预览
+  const renderStitchPreview = () => {
+    if (!showStitchPreview || !stitchedImage) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={() => setShowStitchPreview(false)}
+      >
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          className="rounded-lg w-full max-w-full h-[90vh] flex flex-col overflow-hidden"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowStitchPreview(false);
+          }}
+        >
+          <div className="p-3 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-semibold ml-1">预览</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowStitchPreview(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto p-2">
+            <div className="w-full h-full flex items-center justify-center">
+              <img
+                src={stitchedImage}
+                alt="拼接图片"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </div>
+          </div>
+          <div className="p-3 flex-shrink-0">
+            <div className="flex justify-center">
+              <Button onClick={downloadStitchedImage} size="sm">
+                <Download className="h-4 w-4" />
+                下载
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {/* 命令卡片区域 */}
       <motion.div
         className="relative"
         initial={{ opacity: 0, y: 20 }}
@@ -573,6 +1167,15 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* 截图历史列表 */}
+      {renderScreenshotHistory()}
+
+      {/* 单图预览 */}
+      {renderSinglePreview()}
+
+      {/* 拼接预览 */}
+      {renderStitchPreview()}
     </div>
   );
 }
