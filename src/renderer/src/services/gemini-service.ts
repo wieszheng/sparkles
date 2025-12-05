@@ -6,7 +6,7 @@ import type {
 } from "@/components/ai-test/types";
 
 const ai = new GoogleGenAI({
-  apiKey: "AIzaSyDQHv4DSHY6uptJIDOcEHz58gGRThXuG48",
+  apiKey: "",
 });
 
 const ANALYSIS_MODEL = "gemini-2.5-flash"; // Good for text/reasoning
