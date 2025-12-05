@@ -10,7 +10,7 @@ const ai = new GoogleGenAI({
 });
 
 const ANALYSIS_MODEL = "gemini-2.5-flash"; // Good for text/reasoning
-const VISION_MODEL = "gemini-2.5-flash"; // 2.5 flash supports vision now
+const VISION_MODEL = "gemini-2.5-flash";
 
 /**
  * Converts a File object to a Base64 string.
