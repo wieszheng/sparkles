@@ -26,6 +26,11 @@ import {
   Cog,
   PackagePlus,
   Loader2,
+  ChevronRight,
+  CheckCircle2,
+  FileText,
+  List,
+  FileOutput,
 } from "lucide-react";
 
 import {
@@ -45,10 +50,12 @@ import { Api } from "@/apis";
 import { toast } from "sonner";
 import { Toolbar } from "@/components/Toolbar";
 import { AiChat } from "@/components/Chat";
-import { Intelligence } from "@/components/Intelligence";
+// import { Intelligence } from "@/components/Intelligence";
 import { FrameAnalyzer } from "@/components/FrameAnalyzer";
 import { Monitoring } from "@/components/Monitoring";
 import { QRCode } from "@/components/QRCode.tsx";
+import { AiTest } from "@/components/ai-test";
+import { AppStep } from "@/components/ai-test/types.ts";
 
 // 定义设备类型
 interface Device {
@@ -87,6 +94,12 @@ function Main() {
   const [isInstalling, setIsInstalling] = useState(false);
   const [testCaseWorkflow, setTestCaseWorkflow] = useState(null);
 
+  const [step, setStep] = useState<AppStep>(AppStep.INPUT);
+  const steps = [
+    { id: AppStep.INPUT, label: "需求输入", icon: FileText },
+    { id: AppStep.REVIEW, label: "测试点评审", icon: List },
+    { id: AppStep.RESULTS, label: "用例结果", icon: FileOutput },
+  ];
   // 处理测试用例工作流加载
   const handleLoadTestCaseWorkflow = (testCase) => {
     console.log("加载测试用例工作流:", testCase);
@@ -162,7 +175,7 @@ function Main() {
       case "ai":
         return <AiChat />;
       case "ai-test":
-        return <Intelligence />;
+        return <AiTest onStepChange={setStep} />;
       case "automation":
         return (
           <AutomationFlow
@@ -438,6 +451,45 @@ function Main() {
         return (
           <div className="flex gap-2 electron-no-drag">
             <Button size="sm">批量运行</Button>
+          </div>
+        );
+      case "ai-test":
+        return (
+          <div className="flex items-center space-x-2">
+            {steps.map((s, index) => {
+              // Determine state
+              const isCurrent =
+                step === s.id ||
+                (s.id === AppStep.INPUT && step === AppStep.ANALYSIS) ||
+                (s.id === AppStep.REVIEW && step === AppStep.GENERATING);
+
+              const isCompleted =
+                (s.id === AppStep.INPUT &&
+                  step !== AppStep.INPUT &&
+                  step !== AppStep.ANALYSIS) ||
+                (s.id === AppStep.REVIEW &&
+                  (step === AppStep.GENERATING || step === AppStep.RESULTS));
+
+              return (
+                <div key={s.id} className="flex items-center">
+                  {index > 0 && (
+                    <div className="mx-1 text-slate-300">
+                      <ChevronRight size={14} />
+                    </div>
+                  )}
+                  <div
+                    className={`flex items-center px-1 gap-1 rounded transition-colors select-none ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-primary" : ""}`}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle2 size={16} />
+                    ) : (
+                      <s.icon size={16} />
+                    )}
+                    <span className="text-xs">{s.label}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       case "reports":
