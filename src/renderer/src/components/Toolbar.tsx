@@ -18,6 +18,7 @@ import {
   Eye,
   GripVertical,
   ArrowUpDown,
+  Copy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -257,6 +258,61 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
     toast.success("截图已删除");
   };
 
+  const copyScreenshot = async (screenshot: ScreenshotItem) => {
+    try {
+      // 从data URL中提取base64数据
+      const base64Data = screenshot.url.split(",")[1];
+
+      // 将base64转换为二进制数据
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // 创建Blob对象
+      const blob = new Blob([bytes], { type: "image/png" });
+
+      // 复制到剪贴板
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "image/png": blob,
+        }),
+      ]);
+
+      toast.success("已复制");
+    } catch (error) {
+      console.error("复制失败:", error);
+      // 如果方法1失败，尝试方法2：创建一个临时的canvas
+      try {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob(async (blob) => {
+              if (blob) {
+                await navigator.clipboard.write([
+                  new ClipboardItem({
+                    "image/png": blob,
+                  }),
+                ]);
+                toast.success("截图已复制到剪贴板");
+              }
+            }, "image/png");
+          }
+        };
+        img.src = screenshot.url;
+      } catch (fallbackError) {
+        console.error("备用方法也失败:", fallbackError);
+        toast.error("复制失败，请重试");
+      }
+    }
+  };
+
   const clearAllScreenshots = () => {
     if (confirm("确定要删除所有截图吗？")) {
       setScreenshots([]);
@@ -447,7 +503,9 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         {/* 左侧：标题、全选、统计信息 */}
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold ml-1">全选</h3>
+          <h3 className="text-sm font-semibold ml-1">
+            {screenshots.length > 0 && "全选"}
+          </h3>
           {screenshots.length > 0 && (
             <div className="flex items-center gap-2">
               <Checkbox
@@ -669,17 +727,30 @@ export function Toolbar({ selectedDevice }: { selectedDevice: string }) {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+
                     {/* 删除按钮 */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute top-2 left-2 h-6 w-6 p-0 bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                      className="absolute top-2 left-2 h-6 w-6 p-2 bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteScreenshot(screenshot.id);
                       }}
                     >
                       <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                    {/* 复制按钮 */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-10 left-2 h-6 w-6 p-2 bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyScreenshot(screenshot);
+                      }}
+                    >
+                      <Copy className="h-2.5 w-2.5 text-foreground" />
                     </Button>
                   </div>
                   {/* <div className="p-2 bg-background/80 backdrop-blur-sm">

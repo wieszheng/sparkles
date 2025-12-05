@@ -25,6 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { motion } from "framer-motion";
 
 type QRCodeType = "normal" | "art" | "dynamic";
 type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
@@ -148,7 +149,7 @@ export function QRCode() {
   // 艺术/动态二维码额外状态
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [colorize, setColorize] = useState(false);
+  const [colorize, setColorize] = useState(true);
   const [contrast, setContrast] = useState(1.0);
   const [brightness, setBrightness] = useState(1.0);
 
@@ -675,7 +676,12 @@ export function QRCode() {
   );
 
   return (
-    <div className="h-full flex gap-3 p-1.5 bg-card rounded-lg">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="h-full flex gap-3 p-1.5 bg-card rounded-lg"
+    >
       {/* 左侧 - 内容配置区 */}
       <div className="flex-1 flex flex-col bg-card backdrop-blur-sm">
         {/* 左侧头部 */}
@@ -695,7 +701,7 @@ export function QRCode() {
               setResult(null);
             }}
           >
-            <TabsList className="w-2/3 mb-1 bg-muted/50">
+            <TabsList className="w-2/4 mb-1">
               <TabsTrigger
                 value="normal"
                 className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -771,18 +777,21 @@ export function QRCode() {
       {/* 右侧 - 预览区 */}
       <div className="w-[360px] flex flex-col">
         {/* 右侧头部 */}
-        {/*<div className="flex-shrink-0 px-5 py-4 border-b border-border/50 bg-card/50">*/}
-        {/*  <h2 className="text-base font-semibold flex items-center gap-2">*/}
-        {/*    <ImageIcon className="h-5 w-5 text-primary" />*/}
-        {/*    预览结果*/}
+        {/*<div className="flex-shrink-0 px-3 py-3">*/}
+        {/*  <h2 className="text-sm font-semibold flex items-center gap-2">*/}
+        {/*    <ImageIcon className="h-4 w-4" />*/}
+        {/*    预览*/}
         {/*  </h2>*/}
-        {/*  <p className="text-xs text-muted-foreground mt-1">*/}
-        {/*    实时查看生成的二维码*/}
-        {/*  </p>*/}
+        {/*  <p className="text-xs text-muted-foreground mt-1">查看生成的二维码</p>*/}
         {/*</div>*/}
 
         {/* 右侧内容 */}
-        <div className="flex-1 overflow-auto p-5 flex flex-col">
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex-1 overflow-auto p-5 flex flex-col"
+        >
           {result ? (
             <div className="flex-1 flex flex-col">
               {/* 二维码预览 */}
@@ -855,8 +864,8 @@ export function QRCode() {
               </p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
