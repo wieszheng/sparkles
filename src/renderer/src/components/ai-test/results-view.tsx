@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -10,7 +10,7 @@ import {
   type NodeProps,
   useNodesState,
   useEdgesState,
-  MarkerType,
+  MiniMap,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -20,315 +20,346 @@ import {
   CheckCircle,
   ListOrdered,
   FileText,
-  AlertCircle,
   ArrowLeft,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import type { TestCase } from "./types";
-import { cn } from "@/lib/utils.ts";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "@/components/theme-provider";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ResultsViewProps {
   testCases: TestCase[];
-  onUpdateTestCase: (updatedCase: TestCase) => void;
   onBack: () => void;
 }
 
-// --- Custom Nodes (Styled) ---
-
 const CaseTitleNode = ({ data }: NodeProps) => {
   const priorityColors = {
-    P0: 'bg-red-100 text-red-700 border-red-300',
-    P1: 'bg-amber-100 text-amber-700 border-amber-300',
-    P2: 'bg-blue-100 text-blue-700 border-blue-300'
+    P0: "bg-red-100 text-red-700 border-red-300",
+    P1: "bg-amber-100 text-amber-700 border-amber-300",
+    P2: "bg-blue-100 text-blue-700 border-blue-300",
   };
-  
+
   const typedData = data as { title: string; priority: string; type: string };
-  const priorityClass = priorityColors[typedData.priority as keyof typeof priorityColors] || priorityColors.P2;
+  const priorityClass =
+    priorityColors[typedData.priority as keyof typeof priorityColors] ||
+    priorityColors.P2;
 
   return (
-    <div className="shadow-lg rounded-xl bg-card border-2 border-border w-[240px] overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all">
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        className="w-3 h-3 bg-primary border-2 border-background rounded-full"
-        style={{ left: -6 }}
-      />
-      <div className="p-3 border-b-2 border-border flex justify-between items-center bg-muted/50">
-         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold border-2", priorityClass)}>
-           {typedData.priority}
-         </span>
-         <span className="text-[10px] text-muted-foreground font-medium tracking-wide">{typedData.type}</span>
+    <div className="shadow-lg rounded-lg bg-card border w-[240px] overflow-hidden transition-all">
+      <Handle type="target" position={Position.Left} />
+      <div className="px-3 py-2 border-b-1 border-border flex justify-between items-center bg-muted/50">
+        <span
+          className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold border-2",
+            priorityClass,
+          )}
+        >
+          {typedData.priority}
+        </span>
+        <span className="text-[10px] text-muted-foreground font-bold tracking-wide">
+          {typedData.type}
+        </span>
       </div>
-      <div className="p-3 bg-card">
-        <div className="text-xs font-semibold text-card-foreground leading-relaxed">{typedData.title}</div>
+      <div className="p-3">
+        <div className="text-xs font-semibold leading-relaxed">
+          {typedData.title}
+        </div>
       </div>
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        className="w-3 h-3 bg-primary border-2 border-background rounded-full"
-        style={{ right: -6 }}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-blue-600"
       />
     </div>
   );
 };
 
-const DetailNode = ({ data }: NodeProps) => {
-  const typedData = data as { type: string; label: string; content: string };
-  
-  let Icon = FileText;
-  let headerColor = 'text-muted-foreground';
-  let accentColor = 'bg-muted';
-
-  if (typedData.type === 'precondition') {
-    Icon = AlertCircle;
-    headerColor = 'text-amber-600';
-    accentColor = 'bg-amber-500';
-  } else if (typedData.type === 'steps') {
-    Icon = ListOrdered;
-    headerColor = 'text-blue-600';
-    accentColor = 'bg-blue-500';
-  } else if (typedData.type === 'result') {
-    Icon = CheckCircle;
-    headerColor = 'text-green-600';
-    accentColor = 'bg-green-500';
-  }
+const StepsNode = ({ data }: NodeProps) => {
+  const typedData = data as {
+    precondition: string;
+    steps: string[];
+  };
 
   return (
-    <div className="shadow-md rounded-xl bg-card border-2 border-border w-[280px] overflow-hidden hover:shadow-lg transition-shadow">
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        className="w-3 h-3 bg-muted-foreground border-2 border-background rounded-full"
-        style={{ left: -6 }}
-      />
-      <div className="flex">
-         <div className={`w-2 ${accentColor}`}></div>
-         <div className="flex-1">
-            <div className={`px-3 py-2 border-b-2 border-border flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider ${headerColor} bg-muted/50`}>
-              <Icon size={10} />
-              {typedData.label}
+    <div className="shadow-lg rounded-lg bg-card border w-[320px] overflow-hidden transition-shadow">
+      <Handle type="target" position={Position.Left} className="!bg-blue-600" />
+      <div className="flex-1">
+        <div className="px-3 py-2 border-b-1 border-border flex gap-1 text-[11px] font-bold uppercase tracking-wider text-blue-600 bg-muted/50">
+          <ListOrdered className="w-4 h-4" />
+          步骤
+        </div>
+        <div className="p-3 text-[11px] leading-relaxed max-h-[300px] overflow-y-auto custom-scrollbar bg-card">
+          {/* 前置条件 */}
+          {typedData.precondition && typedData.precondition !== "无" && (
+            <div className="mb-3">
+              <div className="font-bold text-[11px] mb-1">前置条件：</div>
+              <div className="whitespace-pre-wrap text-muted-foreground">
+                {typedData.precondition}
+              </div>
             </div>
-            <div className="p-3 text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto custom-scrollbar bg-card">
-              {typedData.content}
-            </div>
-         </div>
+          )}
+
+          {/* 操作步骤 */}
+          <div>
+            <div className="font-bold text-[11px] mb-1">操作步骤：</div>
+            {typedData.steps.map((step, i) => (
+              <div
+                key={i}
+                className="whitespace-pre-wrap mb-1 text-muted-foreground"
+              >
+                {i + 1}. {step}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        className="w-3 h-3 bg-muted-foreground border-2 border-background rounded-full"
-        style={{ right: -6 }}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-green-600"
       />
     </div>
   );
 };
 
-const calculateGraphLayout = (testCases: TestCase[]): { nodes: Node[]; edges: Edge[] } => {
+const ResultNode = ({ data }: NodeProps) => {
+  const typedData = data as {
+    content: string;
+  };
+
+  return (
+    <div className="shadow-lg rounded-lg bg-card border w-[280px] overflow-hidden">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-green-600"
+      />
+      <div className="flex-1">
+        <div className="px-3 py-2 border-b-1 border-border flex gap-1 text-[11px] font-bold uppercase tracking-wider text-green-600 bg-muted/50">
+          <CheckCircle className="w-4 h-4" />
+          预期结果
+        </div>
+        <div className="p-3 text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto custom-scrollbar bg-card">
+          {typedData.content}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RootNode = () => {
+  return (
+    <div className="shadow-lg rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border-1 border-primary/30 w-[200px] overflow-hidden transition-all">
+      <Handle type="source" position={Position.Right} />
+      <div className="flex flex-col items-center justify-center p-2">
+        <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-1">
+          <Network className="w-6 h-6 text-primary" />
+        </div>
+
+        <div className="text-[10px] font-bold mt-1 text-center">
+          测试用例总览
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CategoryNode = ({ data }: NodeProps) => {
+  const typedData = data as { label: string; count?: number };
+
+  return (
+    <div className="shadow-lg rounded-lg bg-card border border-border/50 w-[200px] overflow-hidden transition-all">
+      <Handle type="target" position={Position.Left} />
+      <div className="flex flex-col items-center justify-center p-3">
+        <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-1">
+          <FileText className="w-5 h-5" />
+        </div>
+        <div className="text-sm font-bold text-center leading-tight">
+          {typedData.label}
+        </div>
+        {typedData.count && (
+          <div className="text-[10px] text-muted-foreground mt-1">
+            {typedData.count} 条用例
+          </div>
+        )}
+      </div>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+};
+
+const calculateGraphLayout = (
+  testCases: TestCase[],
+): { nodes: Node[]; edges: Edge[] } => {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  
+
   const X_ROOT = 50;
   const X_CAT = 350;
   const X_TITLE = 650;
-  const X_PRE = 1000;
-  const X_STEP = 1400;
-  const X_RES = 1800;
-  
-  const ROW_HEIGHT = 280; 
+  const X_STEPS = 1100;
+  const X_RES = 1500;
+
+  const ROW_HEIGHT = 280;
   let currentY = 100;
-  
-  const categories = Array.from(new Set(testCases.map(tc => tc.type)));
+
+  const categories = Array.from(new Set(testCases.map((tc) => tc.type)));
 
   // Root Node
   const rootY = (testCases.length * ROW_HEIGHT) / 2 + 100;
   nodes.push({
-    id: 'root',
-    type: 'input',
-    data: { label: '测试计划总览' },
+    id: "root",
+    type: "root",
+    data: { label: "测试计划总览" },
     position: { x: X_ROOT, y: rootY },
-      style: { 
-        background: 'hsl(var(--primary))', 
-        color: 'hsl(var(--primary-foreground))', 
-        border: '2px solid hsl(var(--primary))', 
-        borderRadius: '50px', 
-        width: 160, 
-        padding: '14px',
-        textAlign: 'center',
-        fontWeight: 'bold',
-        fontSize: '14px',
-        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
-      },
   });
 
   // Category Nodes and Connections
-  categories.forEach(cat => {
-    const catCases = testCases.filter(tc => tc.type === cat);
+  categories.forEach((cat) => {
+    const catCases = testCases.filter((tc) => tc.type === cat);
     const catNodeY = currentY + (catCases.length * ROW_HEIGHT) / 2 - 40;
     const catId = `cat-${cat}`;
-    
+
     // Category Node
     nodes.push({
       id: catId,
-      data: { label: cat },
+      type: "category",
+      data: { label: cat, count: catCases.length },
       position: { x: X_CAT, y: catNodeY },
-      style: { 
-        background: 'hsl(var(--card))', 
-        border: '2px solid hsl(var(--border))', 
-        borderRadius: '12px', 
-        fontWeight: 'bold', 
-        width: 180, 
-        padding: '12px',
-        textAlign: 'center',
-        color: 'hsl(var(--card-foreground))',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+    });
+
+    // Root to Category Edge
+    edges.push({
+      id: `e-root-${catId}`,
+      source: "root",
+      target: catId,
+      className: "react-flow__edge-path-slow",
+      style: {
+        stroke: "#6b7280",
+        strokeWidth: 1,
+        strokeDasharray: "5, 5",
       },
     });
 
-      // Root to Category Edge
-      edges.push({
-        id: `e-root-${catId}`,
-        source: 'root',
-        target: catId,
-        style: { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 3, opacity: 0.9 },
-        markerEnd: { type: MarkerType.ArrowClosed }
-      });
-
     // Test Cases for this Category
-    catCases.forEach(tc => {
-      const rowY = currentY; 
-      
+    catCases.forEach((tc) => {
+      const rowY = currentY;
+
       // Test Case Title Node
       const titleId = tc.id;
       nodes.push({
         id: titleId,
-        type: 'caseTitle',
+        type: "caseTitle",
         position: { x: X_TITLE, y: rowY },
-        data: { title: tc.title, priority: tc.priority, type: tc.type }
+        data: { title: tc.title, priority: tc.priority, type: tc.type },
       });
 
-      // Precondition Node
-      const preId = `${tc.id}-pre`;
-      nodes.push({
-        id: preId,
-        type: 'detail',
-        position: { x: X_PRE, y: rowY },
-        data: { type: 'precondition', label: '前置条件', content: tc.precondition && tc.precondition !== '无' ? tc.precondition : '无' }
-      });
-
-      // Steps Node
+      // Steps Node (前置条件和操作步骤)
       const stepId = `${tc.id}-step`;
       nodes.push({
         id: stepId,
-        type: 'detail',
-        position: { x: X_STEP, y: rowY },
-        data: { type: 'steps', label: '操作步骤', content: tc.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') }
+        type: "steps",
+        position: { x: X_STEPS, y: rowY },
+        data: {
+          precondition: tc.precondition || "无",
+          steps: tc.steps,
+        },
       });
 
       // Result Node
       const resId = `${tc.id}-res`;
       nodes.push({
         id: resId,
-        type: 'detail',
+        type: "result",
         position: { x: X_RES, y: rowY },
-        data: { type: 'result', label: '预期结果', content: tc.expectedResult }
+        data: { content: tc.expectedResult },
       });
 
       // Create edges with enhanced visibility
-      const edgeStyle = { 
-        stroke: 'hsl(var(--primary))', 
-        strokeWidth: 3,
-        opacity: 1
+      const edgeStyle = {
+        stroke: "#3b82f6",
+        strokeWidth: 1,
+        strokeDasharray: "8, 4",
       };
 
       const categoryEdgeStyle = {
-        stroke: 'hsl(var(--muted-foreground))',
-        strokeWidth: 3,
-        opacity: 0.9
+        stroke: "#6b7280",
+        strokeWidth: 1,
+        strokeDasharray: "8, 4",
+      };
+
+      const resultEdgeStyle = {
+        stroke: "#22c55e",
+        strokeWidth: 1,
+        strokeDasharray: "8, 4",
       };
 
       // Category to Test Case Edge
-      edges.push({ 
-        id: `e-${catId}-${titleId}`, 
-        source: catId, 
-        target: titleId, 
+      edges.push({
+        id: `e-${catId}-${titleId}`,
+        source: catId,
+        target: titleId,
         style: categoryEdgeStyle,
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' }
       });
 
-      // Test Case to Precondition Edge
-      edges.push({ 
-        id: `e-${titleId}-${preId}`, 
-        source: titleId, 
-        target: preId, 
-        style: edgeStyle, 
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' }
-      });
-
-      // Precondition to Steps Edge
-      edges.push({ 
-        id: `e-${preId}-${stepId}`, 
-        source: preId, 
-        target: stepId, 
-        style: edgeStyle, 
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' }
+      // Test Case to Steps Edge
+      edges.push({
+        id: `e-${titleId}-${stepId}`,
+        source: titleId,
+        target: stepId,
+        style: edgeStyle,
       });
 
       // Steps to Result Edge
-      edges.push({ 
-        id: `e-${stepId}-${resId}`, 
-        source: stepId, 
-        target: resId, 
-        style: edgeStyle, 
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))' }
+      edges.push({
+        id: `e-${stepId}-${resId}`,
+        source: stepId,
+        target: resId,
+        style: resultEdgeStyle,
       });
 
       currentY += ROW_HEIGHT;
     });
-    
+
     currentY += 80;
   });
 
   return { nodes, edges };
 };
 
-export const ResultsView: React.FC<ResultsViewProps> = ({
-  testCases,
-  onUpdateTestCase,
-  onBack,
-}) => {
+export function ResultsView({ testCases, onBack }: ResultsViewProps) {
+  const { theme } = useTheme();
+
   const [viewMode, setViewMode] = useState<"table" | "mindmap">("table");
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const nodeTypes = useMemo(
-    () => ({
-      caseTitle: CaseTitleNode,
-      detail: DetailNode,
-    }),
-    [],
-  );
+  const nodeTypes = {
+    root: RootNode,
+    category: CategoryNode,
+    caseTitle: CaseTitleNode,
+    steps: StepsNode,
+    result: ResultNode,
+  };
 
   useEffect(() => {
     const layout = calculateGraphLayout(testCases);
-    console.log('Graph Layout:', {
-      nodesCount: layout.nodes.length,
-      edgesCount: layout.edges.length,
-      edges: layout.edges.map(e => ({ id: e.id, source: e.source, target: e.target }))
-    });
+
     setNodes(layout.nodes as any);
+
     setEdges(layout.edges as any);
   }, [testCases, setNodes, setEdges]);
-
-  const handleStepsChange = (tc: TestCase, text: string) => {
-    const steps = text
-      .split("\n")
-      .filter((line) => line.trim() !== "")
-      .map((line) => line.replace(/^\d+\.\s*/, ""));
-    onUpdateTestCase({ ...tc, steps });
-  };
 
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
@@ -338,7 +369,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
         模块: tc.type,
         优先级: tc.priority,
         前置条件: tc.precondition,
-        操作步骤: tc.steps.join("\n"),
+        操作步骤: tc.steps,
         预期结果: tc.expectedResult,
       })),
     );
@@ -348,17 +379,17 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col overflow-hidden rounded-lg">
       {/* Toolbar */}
-      <div className="flex items-center justify-between bg-card/50 backdrop-blur-sm border-b border-border flex-shrink-0 py-2">
+      <div className="flex items-center justify-between bg-card backdrop-blur-sm flex-shrink-0 py-2">
         <div className="flex items-center">
           <Button variant="ghost" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
             评审
           </Button>
-          <div className="h-4 w-px bg-border" />
-          <span className="text-xs text-muted-foreground">|</span>
-          <Badge variant="outline">共 {testCases.length} 条用例</Badge>
+          <div className="h-4 w-px" />
+          <span className="text-xs text-muted-foreground mr-3">|</span>
+          <Badge>共 {testCases.length} 条用例</Badge>
         </div>
 
         <div className="flex items-center gap-2">
@@ -388,165 +419,118 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             </button>
           </div>
 
-          <Button size="sm" onClick={exportToExcel}>
+          <Button variant="ghost" size="sm" onClick={exportToExcel}>
             <Download className="h-4 w-4" />
             导出
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 relative bg-card/30">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {viewMode === "table" ? (
-          <div className="absolute inset-0 overflow-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-            <div className="min-w-[1200px]">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-background sticky top-0 z-10 shadow-sm">
-                  <tr>
-                    {[
-                      "ID",
-                      "优先级",
-                      "类型",
-                      "用例标题",
-                      "前置条件",
-                      "操作步骤",
-                      "预期结果",
-                    ].map((h, i) => (
-                      <th
-                        key={i}
-                        className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-background">
-                  {testCases.map((tc) => (
-                    <tr
-                      key={tc.id}
-                      className="hover:bg-muted/30 transition-colors group"
-                    >
-                      <td className="px-6 py-4 text-xs text-muted-foreground font-mono align-top w-20 pt-5">
-                        {tc.id.slice(-4)}
-                      </td>
-
-                      <td className="px-6 py-4 align-top w-24">
-                        <select
-                          className={cn(
-                            "h-8 text-[10px] font-bold",
-                            tc.priority === "P0"
-                              ? "text-red-600 bg-red-50 border-red-200"
-                              : tc.priority === "P1"
-                                ? "text-amber-600 bg-amber-50 border-amber-200"
-                                : "text-blue-600 bg-blue-50 border-blue-200",
-                          )}
-                          value={tc.priority}
-                          onChange={(e) =>
-                            onUpdateTestCase({
-                              ...tc,
-                              priority: e.target.value as any,
-                            })
-                          }
-                        >
-                          <option value="P0">P0</option>
-                          <option value="P1">P1</option>
-                          <option value="P2">P2</option>
-                        </select>
-                      </td>
-
-                      <td className="px-6 py-4 align-top w-32">
-                        <select
-                          className="h-8 text-xs text-muted-foreground"
-                          value={tc.type}
-                          onChange={(e) =>
-                            onUpdateTestCase({
-                              ...tc,
-                              type: e.target.value as any,
-                            })
-                          }
-                        >
-                          <option value="功能测试">功能测试</option>
-                          <option value="UI测试">UI测试</option>
-                          <option value="性能测试">性能测试</option>
-                          <option value="安全测试">安全测试</option>
-                        </select>
-                      </td>
-
-                      <td className="px-6 py-4 align-top w-64">
-                        <Textarea
-                          className="text-sm font-medium border-none p-0 resize-none shadow-none focus-visible:ring-0 min-h-[50px]"
-                          value={tc.title}
-                          onChange={(e) =>
-                            onUpdateTestCase({ ...tc, title: e.target.value })
-                          }
-                          rows={2}
-                        />
-                      </td>
-
-                      <td className="px-6 py-4 align-top w-48">
-                        <Textarea
-                          className="text-xs text-muted-foreground border-none p-0 resize-none shadow-none focus-visible:ring-0 min-h-[60px]"
-                          value={tc.precondition}
-                          onChange={(e) =>
-                            onUpdateTestCase({
-                              ...tc,
-                              precondition: e.target.value,
-                            })
-                          }
-                          rows={3}
-                        />
-                      </td>
-
-                      <td className="px-6 py-4 align-top">
-                        <Textarea
-                          className="text-xs text-muted-foreground border-none p-0 resize-none shadow-none focus-visible:ring-0 font-mono min-h-[80px]"
-                          value={tc.steps
-                            .map((s, i) => `${i + 1}. ${s}`)
-                            .join("\n")}
-                          onChange={(e) =>
-                            handleStepsChange(tc, e.target.value)
-                          }
-                          rows={Math.max(3, tc.steps.length)}
-                        />
-                      </td>
-
-                      <td className="px-6 py-4 align-top w-64">
-                        <Textarea
-                          className="text-xs text-muted-foreground border-none p-0 resize-none shadow-none focus-visible:ring-0 min-h-[60px]"
-                          value={tc.expectedResult}
-                          onChange={(e) =>
-                            onUpdateTestCase({
-                              ...tc,
-                              expectedResult: e.target.value,
-                            })
-                          }
-                          rows={3}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            {/* 固定表头 */}
+            <div className="flex-shrink-0 bg-card/50">
+              <div className="min-w-[800px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px] min-w-[80px]">
+                        ID
+                      </TableHead>
+                      <TableHead className="min-w-[150px]">用例标题</TableHead>
+                      <TableHead className="min-w-[100px]">类型</TableHead>
+                      <TableHead className="min-w-[150px]">前置条件</TableHead>
+                      <TableHead className="min-w-[200px]">测试步骤</TableHead>
+                      <TableHead className="min-w-[150px]">预期结果</TableHead>
+                      <TableHead className="w-[80px] min-w-[80px]">
+                        优先级
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                </Table>
+              </div>
             </div>
-          </div>
+
+            {/* 可滚动的表格内容 */}
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="min-w-[800px] mr-2.5">
+                  <Table>
+                    <TableBody>
+                      {testCases.map((tc) => (
+                        <TableRow key={tc.id}>
+                          <TableCell className="font-mono text-sm">
+                            {tc.id}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {tc.title}
+                          </TableCell>
+                          <TableCell>
+                            <Badge>{tc.type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {tc.precondition}
+                          </TableCell>
+                          <TableCell className="text-sm whitespace-pre-line">
+                            {tc.steps.map((s) => `${s}`).join("\n")}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {tc.expectedResult}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                tc.priority === "P0"
+                                  ? "destructive"
+                                  : tc.priority === "P1"
+                                    ? "default"
+                                    : "secondary"
+                              }
+                            >
+                              {tc.priority === "P0"
+                                ? "高"
+                                : tc.priority === "P1"
+                                  ? "中"
+                                  : "低"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
+          </>
         ) : (
-          <div className="h-full w-full bg-background border border-border">
+          <div className="h-full w-full">
             <ReactFlow
               nodes={nodes}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               nodeTypes={nodeTypes}
+              colorMode={theme}
+              minZoom={0.1}
+              maxZoom={4}
               fitView
-              defaultViewport={{ x: 0, y: 0, zoom: 0.3 }}
-              style={{ background: 'hsl(var(--background))' }}
+              fitViewOptions={{
+                padding: 0.2,
+                maxZoom: 1.2,
+                minZoom: 0.5,
+              }}
+              defaultEdgeOptions={{
+                animated: true,
+              }}
             >
-              <Background color="hsl(var(--muted))" gap={20} size={1} />
-              <Controls className="!bg-card !border-border !shadow-lg !rounded-lg" />
+              <Background gap={12} />
+              <MiniMap />
+              <Controls />
             </ReactFlow>
           </div>
         )}
       </div>
     </div>
   );
-};
+}

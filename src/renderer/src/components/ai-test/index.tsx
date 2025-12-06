@@ -14,10 +14,8 @@ interface AIGenerateTestCaseProps {
   onStepChange: (step: AppStep) => void;
 }
 export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
-  // Application State
   const [step, setStep] = useState<AppStep>(AppStep.INPUT);
 
-  // Data State
   const [inputText, setInputText] = useState("");
   const [inputFiles, setInputFiles] = useState<File[]>([]);
   const [selectedModel, setSelectedModel] = useState("glm-4-air");
@@ -58,11 +56,11 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
     }
   };
 
-  const handleUpdateTestCase = (updatedCase: TestCase) => {
-    setTestCases((prev) =>
-      prev.map((tc) => (tc.id === updatedCase.id ? updatedCase : tc)),
-    );
-  };
+  // const handleUpdateTestCase = (updatedCase: TestCase) => {
+  //   setTestCases((prev) =>
+  //     prev.map((tc) => (tc.id === updatedCase.id ? updatedCase : tc)),
+  //   );
+  // };
 
   const reset = () => {
     setStep(AppStep.INPUT);
@@ -84,13 +82,10 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
     icon: any;
   }) => (
     <div className="flex flex-col items-center justify-center h-full bg-background relative overflow-hidden">
-      {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-background to-background"></div>
 
       <div className="relative z-10 flex flex-col items-center gap-8">
-        {/* Document Card with Scanning Effect */}
         <div className="relative w-40 h-54 bg-card border border-border rounded-xl shadow-lg overflow-hidden flex flex-col p-6 gap-4">
-          {/* Document Skeleton Content */}
           <div className="w-1/3 h-2 bg-muted rounded-md"></div>
           <div className="w-full h-2 bg-muted/50 rounded-sm"></div>
           <div className="w-full h-2 bg-muted/50 rounded-sm"></div>
@@ -104,9 +99,7 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
             </div>
           </div>
 
-          {/* Scanning Laser Beam */}
           <div className="absolute left-0 right-0 h-1 bg-primary/80 shadow-[0_0_20px_rgba(59,130,246,0.6)] animate-scan-up z-20"></div>
-          {/* Trailing Gradient */}
           <div className="absolute left-0 right-0 h-24 bg-gradient-to-t from-primary/20 to-transparent animate-scan-up z-10 -translate-y-full transform-gpu"></div>
         </div>
 
@@ -176,7 +169,7 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
       {step === AppStep.RESULTS && (
         <ResultsView
           testCases={testCases}
-          onUpdateTestCase={handleUpdateTestCase}
+          // onUpdateTestCase={handleUpdateTestCase}
           onBack={reset}
         />
       )}

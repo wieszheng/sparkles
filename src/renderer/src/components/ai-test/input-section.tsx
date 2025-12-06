@@ -58,8 +58,12 @@ export function InputSection({
     <div className="flex-1 flex gap-4 p-1.5 overflow-hidden">
       <div className="flex-1 flex flex-col relative border-r border-border">
         <Textarea
+          style={{
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
           ref={textareaRef}
-          className="w-full h-full border-none p-4 focus-visible:ring-0 text-foreground placeholder:text-muted-foreground resize-none leading-relaxed text-base font-mono"
+          className="w-full h-full border-none p-4 focus-visible:ring-0 leading-relaxed"
           placeholder="# 需求描述&#10;&#10;请在此处粘贴产品需求文档 (PRD)、用户故事或功能列表...&#10;&#10;例如：&#10;1. 用户可以通过手机号注册&#10;2. 密码必须包含字母和数字"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -93,16 +97,10 @@ export function InputSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="glm-4-air">
-                  GLM-4 Air (平衡)
-                </SelectItem>
-                <SelectItem value="glm-4-flash">
-                  GLM-4 Flash (快速)
-                </SelectItem>
-                <SelectItem value="glm-4">GLM-4 (标准)</SelectItem>
-                <SelectItem value="glm-4-long">
-                  GLM-4 Long (长文本)
-                </SelectItem>
+                <SelectItem value="glm-4-air">GLM-4-Air</SelectItem>
+                <SelectItem value="glm-4-flash">GLM-4-Flash</SelectItem>
+                <SelectItem value="glm-4">GLM-4</SelectItem>
+                <SelectItem value="glm-4-long">GLM-4-Long</SelectItem>
               </SelectContent>
             </Select>
           </div>

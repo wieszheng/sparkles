@@ -27,7 +27,7 @@ import {
   PackagePlus,
   Loader2,
   ChevronRight,
-  CheckCircle2,
+  Check,
   FileText,
   List,
   FileOutput,
@@ -473,17 +473,23 @@ function Main() {
               return (
                 <div key={s.id} className="flex items-center">
                   {index > 0 && (
-                    <div className="mx-1 text-slate-300">
-                      <ChevronRight size={14} />
+                    <div className="mx-1 ">
+                      <ChevronRight className="w-4 h-4" />
                     </div>
                   )}
                   <div
-                    className={`flex items-center px-1 gap-1 rounded transition-colors select-none ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-primary" : ""}`}
+                    className={`flex rounded gap-1 font-medium ${
+                      isCurrent
+                        ? "animate-pulse"
+                        : isCompleted
+                          ? ""
+                          : "text-muted-foreground/70"
+                    }`}
                   >
                     {isCompleted ? (
-                      <CheckCircle2 size={16} />
+                      <Check className="w-4 h-4" />
                     ) : (
-                      <s.icon size={16} />
+                      <s.icon className="w-4 h-4" />
                     )}
                     <span className="text-xs">{s.label}</span>
                   </div>
