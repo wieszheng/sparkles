@@ -1,14 +1,28 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Type, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SelectorDialog } from "@/components/selector-dialog";
-import type { InputNode } from "@/components/type";
+
 import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 
+type InputNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    text: string;
+    selector: string;
+    waitTime?: number;
+    retryCount?: number;
+    clearFirst?: string;
+  };
+}>;
 export function InputNode({ data, id }: NodeProps<InputNode>) {
   const updateConfig = (key: string, value: string) => {
     if (data.onConfigChange) {

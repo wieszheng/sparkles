@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/renderer/src/*"]
-    }
+    },
+    "typeRoots": ["./src/types ", "./node_modules/@types "]
   },
   "files": [],
   "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]

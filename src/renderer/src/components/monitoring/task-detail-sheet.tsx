@@ -5,7 +5,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import type { MonitoringTask, MonitorConfig } from "./types";
+
 import { MonitoringChart } from "./monitoring-chart";
 import { TaskStatusBadge } from "./task-status-badge";
 

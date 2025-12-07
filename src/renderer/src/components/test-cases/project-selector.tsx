@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Api } from "@/apis";
-import type { Directory, Project } from "@/components/TestCase";
+
 import { toast } from "sonner";
 
 interface ProjectSelectorProps {

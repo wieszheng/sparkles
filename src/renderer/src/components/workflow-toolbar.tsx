@@ -19,8 +19,16 @@ import {
 import type { Node, Edge } from "@xyflow/react";
 
 import { motion } from "framer-motion";
-import type { WorkflowData } from "../../../types/workflow";
-
+interface WorkflowData {
+  id?: string;
+  name: string;
+  description?: string;
+  nodes: Node[];
+  edges: Edge[];
+  createdAt?: Date;
+  updatedAt?: Date;
+  version?: string;
+}
 interface WorkflowToolbarProps {
   onAddNode: (type: string) => void;
   currentNodes?: Node[];

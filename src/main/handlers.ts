@@ -22,7 +22,6 @@ import {
   uninstallBundle,
 } from "./hdc/bundle";
 
-// 导入uitest屏幕捕获相关方法
 import { startCaptureScreen, stopCaptureScreen } from "./hdc/uitest";
 
 import fs from "fs-extra";
@@ -30,13 +29,6 @@ import path from "path";
 
 const BACKEND_HOST = "82.157.176.120";
 const BACKEND_PORT = 8000;
-
-interface ApiCallPayload {
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  endpoint: string;
-  data?: object;
-  contentType?: "json" | "form-data";
-}
 
 export function initIpcHandlers(): void {
   // ==================== HDC 相关 IPC 处理程序 ====================
@@ -235,7 +227,7 @@ export function initIpcHandlers(): void {
 
       const res = await fetch(url.toString(), {
         method,
-        headers, // 使用上面构造的 headers，不强制为 application/json
+        headers,
         body,
       });
       return await res.json();
@@ -244,7 +236,155 @@ export function initIpcHandlers(): void {
       return { success: false, error: "请求失败" };
     }
   });
+  ipcMain.handle("call-api-request", async (_, options: RequestOptions) => {
+    try {
+      console.info("[IPC call-api-request]", options);
+      const {
+        endpoint,
+        method = "GET",
+        headers = {},
+        body,
+        bodyType = "json",
+        formData,
+      } = options;
 
+      // 构建请求配置
+      const url = new URL(
+        endpoint.startsWith("/") ? endpoint : `/${endpoint}`,
+        `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+      );
+      console.log("[IPC call-api endpoint]", url);
+      const fetchOptions: RequestInit = {
+        method,
+        headers: { ...headers },
+      };
+
+      // 处理请求体
+      if (method !== "GET") {
+        if (bodyType === "json") {
+          fetchOptions.body = JSON.stringify(body);
+          if (!fetchOptions.headers) fetchOptions.headers = {};
+          if (
+            !(fetchOptions.headers as Record<string, string>)["Content-Type"]
+          ) {
+            (fetchOptions.headers as Record<string, string>)["Content-Type"] =
+              "application/json";
+          }
+        } else if (bodyType === "text") {
+          fetchOptions.body = String(body);
+          if (!fetchOptions.headers) fetchOptions.headers = {};
+          if (
+            !(fetchOptions.headers as Record<string, string>)["Content-Type"]
+          ) {
+            (fetchOptions.headers as Record<string, string>)["Content-Type"] =
+              "text/plain";
+          }
+        } else if (bodyType === "formData") {
+          const form = new FormData();
+          // if (formData && Array.isArray(formData)) {
+          //   for (const field of formData) {
+          //     if (field.type === "file" && field.filePath) {
+          //       // 文件字段
+          //       const fileStream = fs.createReadStream(field.filePath);
+          //       form.append(
+          //         field.name,
+          //         fileStream,
+          //         path.basename(field.filePath),
+          //       );
+          //     } else if (field.type === "buffer" && field.buffer) {
+          //       // Buffer 字段
+          //       form.append(
+          //         field.name,
+          //         Buffer.from(field.buffer),
+          //         field.filename,
+          //       );
+          //     } else if (field.value !== undefined) {
+          //       // 普通字段
+          //       form.append(field.name, String(field.value));
+          //     }
+          //   }
+          // }
+
+          console.log("[IPC call-api endpoint]", formData);
+          if (formData) {
+            // ← 接收
+            for (const field of formData.fields) {
+              if (field.type === "file") {
+                // base64 → Buffer
+                const buffer = Buffer.from(field.data, "base64");
+                // 添加到 Node.js FormData
+                form.append(field.name, buffer, field.filename);
+              } else {
+                form.append(field.name, String(field.value));
+              }
+            }
+          }
+
+          fetchOptions.body = formData;
+          console.log("[IPC call-api endpoint]", fetchOptions);
+          // FormData 会自动设置 Content-Type
+          if (fetchOptions.headers) {
+            delete (fetchOptions.headers as Record<string, string>)[
+              "Content-Type"
+            ];
+          }
+        } else if (bodyType === "blob") {
+          fetchOptions.body = Buffer.from(body);
+        } else {
+          fetchOptions.body = body;
+        }
+      }
+
+      // 发送请求
+      const res: Response = await fetch(url, fetchOptions);
+
+      // 返回响应
+      return await res.json();
+    } catch (error) {
+      return {
+        error: error,
+      };
+    }
+  });
+
+  ipcMain.handle("call-api-upload", async (_, options: UploadFileOptions) => {
+    try {
+      const {
+        endpoint,
+        filePath,
+        fieldName = "file",
+        additionalFields = {},
+        headers = {},
+      } = options;
+
+      const url = new URL(
+        endpoint.startsWith("/") ? endpoint : `/${endpoint}`,
+        `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+      );
+      const form = new FormData();
+
+      // 添加文件
+      const fileStream = fs.createReadStream(filePath);
+      form.append(fieldName, fileStream, path.basename(filePath));
+
+      // 添加其他字段
+      for (const [key, value] of Object.entries(additionalFields)) {
+        form.append(key, String(value));
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        body: form,
+        headers,
+      });
+
+      return await response.json();
+    } catch (error) {
+      return {
+        error: error,
+      };
+    }
+  });
   // ==================== 存储相关 IPC 处理程序 ====================
   // 获取所有设置
   ipcMain.handle("get-settings", () => getSettingsStore().get());
@@ -431,14 +571,14 @@ export function initIpcHandlers(): void {
     try {
       // 将数字数组转换为Buffer
       const buffer = Buffer.from(data);
-      
+
       // 确保目录存在
       const dir = path.dirname(filePath);
       await fs.ensureDir(dir);
-      
+
       // 写入文件
       await fs.writeFile(filePath, buffer);
-      
+
       log.info("[文件保存成功]:", filePath);
       return { success: true };
     } catch (error) {
@@ -451,14 +591,14 @@ export function initIpcHandlers(): void {
   ipcMain.handle("read-file", async (_, filePath: string) => {
     try {
       // 检查文件是否存在
-      if (!await fs.pathExists(filePath)) {
+      if (!(await fs.pathExists(filePath))) {
         throw new Error("文件不存在");
       }
-      
+
       // 读取文件内容
       const buffer = await fs.readFile(filePath);
       const fileName = path.basename(filePath);
-      
+
       // 简单的MIME类型检测
       const ext = path.extname(fileName).toLowerCase();
       let mimeType = "application/octet-stream";
@@ -477,13 +617,13 @@ export function initIpcHandlers(): void {
           mimeType = "image/bmp";
           break;
       }
-      
+
       log.info("[文件读取成功]:", filePath);
-      return { 
-        success: true, 
-        data: Array.from(buffer), 
-        fileName, 
-        mimeType 
+      return {
+        success: true,
+        data: Array.from(buffer),
+        fileName,
+        mimeType,
       };
     } catch (error) {
       log.error("文件读取失败:", error);

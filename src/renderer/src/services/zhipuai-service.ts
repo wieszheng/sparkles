@@ -1,10 +1,5 @@
 // 智谱AI服务
 import { zhipuaiChatService, ZHIPUAI_MODELS } from "./zhipuai";
-import type {
-  AnalysisResult,
-  GenerationResult,
-  TestPoint,
-} from "@/components/ai-test/types";
 
 const ANALYSIS_MODEL = ZHIPUAI_MODELS.GLM_4_AIR; // 适合文本推理
 const VISION_MODEL = ZHIPUAI_MODELS.GLM_4_AIR; // GLM-4 支持视觉能力
@@ -52,7 +47,10 @@ export const analyzeRequirements = async (
     ${files.length > 0 ? "\n图片文件已提供，请分析图片中的需求信息。" : ""}
   `;
 
-  const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+  const messages: Array<{
+    role: "user" | "assistant" | "system";
+    content: string;
+  }> = [
     {
       role: "system",
       content: `你是一位专家级软件测试工程师。请用中文回答。你需要严格按照指定的JSON格式返回结果。
@@ -67,9 +65,9 @@ export const analyzeRequirements = async (
       "description": "测试点的中文描述"
     }
   ]
-}`
+}`,
     },
-    { role: "user", content: prompt }
+    { role: "user", content: prompt },
   ];
 
   // 如果有图片文件，添加图片信息到消息中
@@ -78,7 +76,7 @@ export const analyzeRequirements = async (
       const part = await fileToGenerativePart(file);
       messages.push({
         role: "user",
-        content: `[图片文件：${file.name}，类型：${file.type}，大小：${file.size}字节]`
+        content: `[图片文件：${file.name}，类型：${file.type}，大小：${file.size}字节]`,
       });
     }
   }
@@ -87,7 +85,7 @@ export const analyzeRequirements = async (
     const response = await zhipuaiChatService.sendMessage(
       messages,
       files.length > 0 ? VISION_MODEL : ANALYSIS_MODEL,
-      false // 不包含默认的系统提示词，使用我们自定义的
+      false, // 不包含默认的系统提示词，使用我们自定义的
     );
 
     if (!response) throw new Error("No response from AI");
@@ -96,9 +94,9 @@ export const analyzeRequirements = async (
     let parsedResponse: AnalysisResult;
     try {
       parsedResponse = JSON.parse(response);
-    } catch (parseError) {
+    } catch {
       console.error("JSON解析失败，原始响应:", response);
-      
+
       // 如果直接解析失败，尝试提取JSON部分
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -158,19 +156,23 @@ export const generateTestCases = async (
 }
   `;
 
-  const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+  const messages: Array<{
+    role: "user" | "assistant" | "system";
+    content: string;
+  }> = [
     {
       role: "system",
-      content: "你是一位专家级软件测试工程师。请用中文回答。你必须严格按照指定的JSON格式返回结果。"
+      content:
+        "你是一位专家级软件测试工程师。请用中文回答。你必须严格按照指定的JSON格式返回结果。",
     },
-    { role: "user", content: prompt }
+    { role: "user", content: prompt },
   ];
 
   try {
     const response = await zhipuaiChatService.sendMessage(
       messages,
       ANALYSIS_MODEL,
-      false // 不包含默认的系统提示词
+      false, // 不包含默认的系统提示词
     );
 
     if (!response) throw new Error("No response from AI");
@@ -179,9 +181,9 @@ export const generateTestCases = async (
     let parsedResponse: GenerationResult;
     try {
       parsedResponse = JSON.parse(response);
-    } catch (parseError) {
+    } catch {
       console.error("JSON解析失败，原始响应:", response);
-      
+
       // 如果直接解析失败，尝试提取JSON部分
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -189,11 +191,6 @@ export const generateTestCases = async (
       } else {
         throw new Error("无法解析AI响应为JSON格式");
       }
-    }
-
-    // 验证响应格式
-    if (!parsedResponse.testCases) {
-      throw new Error("AI响应格式不正确");
     }
 
     return parsedResponse;

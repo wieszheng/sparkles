@@ -38,19 +38,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface Application {
-  bundleName: string;
-  versionName: string;
-  icon: string;
-  label: string;
-  system: boolean;
-  apiTargetVersion: number;
-  vendor: string;
-  installTime: number;
-  releaseType: string;
-  mainAbility?: string;
-}
-
 export function Application({
   selectedDevice,
   action,

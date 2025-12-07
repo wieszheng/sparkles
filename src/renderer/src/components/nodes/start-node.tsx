@@ -1,10 +1,10 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { StartNode } from "@/components/type";
+
 import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 import {
@@ -14,8 +14,20 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select.tsx";
-
+} from "@/components/ui/select";
+type StartNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    appName?: string;
+    waitTime?: number;
+    startingMode?: string;
+    retryCount?: number;
+  };
+}>;
 export function StartNode({ data, id }: NodeProps<StartNode>) {
   const updateConfig = (key: string, value: string) => {
     if (data.onConfigChange) {

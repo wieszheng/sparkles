@@ -9,20 +9,6 @@ import { TestCaseList } from "@/components/test-cases/test-case-list";
 import { motion } from "framer-motion";
 import { Api } from "@/apis";
 
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface Directory {
-  id: string;
-  name: string;
-  parent_id: string;
-  project_id: string;
-  children: Directory[];
-  isExpanded?: boolean;
-}
 interface TestCasesProps {
   onLoadTestCaseWorkflow?: (testCase: object) => void;
 }

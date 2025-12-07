@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, FileCode, Code2, Save } from "lucide-react";
-import type { ScriptFile } from "./types";
 
 interface ScriptEditorProps {
   scripts: ScriptFile[];

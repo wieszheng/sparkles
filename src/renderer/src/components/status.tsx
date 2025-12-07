@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge.tsx";
-import type { Status } from "@/components/type";
+import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function getStatusBadge(executionStatus: Status) {

@@ -3,12 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, BarChart3, ListTodo, FileCode, Settings } from "lucide-react";
 
-// 类型和数据
-import type {
-  MonitoringTask,
-  ScriptFile,
-  MonitorConfig,
-} from "@/components/monitoring/types";
 import {
   mockMonitoringTasks,
   mockScripts,

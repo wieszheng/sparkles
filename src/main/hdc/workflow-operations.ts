@@ -4,7 +4,6 @@ import * as path from "path";
 import * as os from "node:os";
 import { shell } from "./utils";
 import { startApp, stopApp, sleep, clickCmd } from "./action";
-import type { NodeConfig } from "../../types/workflow";
 
 /**
  * 工作流操作类 - 封装所有节点操作的具体实现

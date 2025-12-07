@@ -97,7 +97,8 @@ export function ScreenMirror({ selectedDevice }: { selectedDevice: string }) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // 重置画布尺寸以清除所有内容
             canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
-            canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
+            canvas.height =
+              canvas.clientHeight * (window.devicePixelRatio || 1);
           }
         }
 

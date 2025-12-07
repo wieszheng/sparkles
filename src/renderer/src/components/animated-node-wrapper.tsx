@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
-import type { Status } from "@/components/type";
 
 interface AnimatedNodeWrapperProps {
   children: ReactNode;

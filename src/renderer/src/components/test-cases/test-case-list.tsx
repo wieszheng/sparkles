@@ -33,7 +33,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Api } from "@/apis";
-import type { Directory, Project } from "@/components/TestCase.tsx";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,23 +43,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-
-interface TestCase {
-  id: string;
-  name: string;
-  content: object;
-  description: string;
-  creator: string;
-  createdAt: string;
-  updatedAt: string;
-  status: "draft" | "active" | "disabled" | "archived";
-  priority: "low" | "medium" | "high" | "critical";
-  tags: string[];
-  executionCount: number;
-  lastResult: "passed" | "failed" | "skipped" | "pending";
-}
 
 interface EnhancedTestCaseListProps {
   selectedDirectory: Directory | null;

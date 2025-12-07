@@ -1,4 +1,4 @@
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,8 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Camera, Search } from "lucide-react";
 import { SelectorDialog } from "@/components/selector-dialog";
-import type { ScreenshotNode } from "@/components/type";
-import { getCardStyle, getStatusBadge } from "@/components/status.tsx";
+
+import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 
 import {
@@ -17,7 +17,21 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select.tsx";
+} from "@/components/ui/select";
+
+type ScreenshotNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    filename: string;
+    fullScreen: boolean;
+    selector?: string;
+    format?: ScreenshotFormat;
+  };
+}>;
 
 export function ScreenshotNode({ data, id }: NodeProps<ScreenshotNode>) {
   const updateConfig = (key: string, value: string | boolean) => {

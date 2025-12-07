@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Api } from "@/apis";
-import type { Project, Directory } from "@/components/TestCase";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Select,
@@ -31,7 +31,17 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { toast } from "sonner";
-import type { WorkflowData } from "../../../types/workflow";
+
+interface WorkflowData {
+  id?: string;
+  name: string;
+  description?: string;
+  nodes: Node[];
+  edges: Edge[];
+  createdAt?: Date;
+  updatedAt?: Date;
+  version?: string;
+}
 
 interface WorkflowControlsProps {
   onExecute: () => Promise<void>;
@@ -46,6 +56,7 @@ interface WorkflowControlsProps {
 
 type CaseState = "draft" | "active" | "disabled" | "archived";
 type CasePriority = "low" | "medium" | "high" | "critical";
+
 export function WorkflowControls({
   onExecute,
   onStop,

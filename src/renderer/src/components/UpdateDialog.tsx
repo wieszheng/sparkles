@@ -4,20 +4,6 @@ import { X, Download, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
-interface UpdateStatus {
-  status:
-    | "checking"
-    | "update-available"
-    | "downloading"
-    | "progress"
-    | "ready"
-    | "up-to-date"
-    | "error";
-  message: string;
-  versionInfo?: { version: string; releaseDate: string; releaseNotes?: string };
-  progress?: number;
-}
-
 export function UpdateDialog({
   isOpen,
   onClose,

@@ -1,22 +1,9 @@
-import type { NodeExecutionStatus } from "../../../types/workflow";
-
-export interface ExecutionState {
+interface ExecutionState {
   isRunning: boolean;
   currentNodeId: string | null;
   nodeStatuses: Map<string, NodeExecutionStatus>;
   executionLog: ExecutionLogEntry[];
   variables: Record<string, any>;
-}
-
-export interface ExecutionLogEntry {
-  id: string;
-  nodeId: string;
-  timestamp: Date;
-  status: "pending" | "running" | "success" | "error";
-  message: string;
-  duration?: number;
-  result?: any;
-  error?: string;
 }
 
 export class ExecutionStateManager {

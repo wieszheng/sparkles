@@ -1,4 +1,4 @@
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { GitBranch, Search } from "lucide-react";
 import { SelectorDialog } from "@/components/selector-dialog";
 import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
-import type { ConditionNode } from "@/components/type";
+
 import {
   Select,
   SelectContent,
@@ -17,6 +17,21 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 
+type ConditionNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    selector: string;
+    operator: Operator;
+    value: string;
+    attribute?: string;
+    waitTime?: string;
+    retryCount?: string;
+  };
+}>;
 export function ConditionNode({ data, id }: NodeProps<ConditionNode>) {
   const updateConfig = (key: string, value: string) => {
     if (data.onConfigChange) {

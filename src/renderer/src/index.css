@@ -116,7 +116,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
   --animate-shiny-text: shiny-text 4s infinite;
+  --shiny-width: 200px; /* 闪光区域的宽度，可根据实际效果调整 */
+  --bg-size: 300%;      /* 渐变背景的尺寸，默认为 300% */
+  --duration: 10s;      /* 跑马灯动画持续时间，可根据内容长度调整 */
+  --gap: 50px;          /* 元素之间的间隙，用于 marquee 动画衔接 */
+
 
   @keyframes shiny-text {
   0%, 90%, 100% {

@@ -1,4 +1,3 @@
-import type { MonitoringTask, ScriptFile, MonitorMetric } from "./types";
 import { Cpu, HardDrive, Thermometer, Battery, Wifi } from "lucide-react";
 
 export const generateChartData = () => {

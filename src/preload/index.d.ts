@@ -45,6 +45,8 @@ interface BundleInfo {
 
 interface Api {
   callApi: (method: string, endpoint: string, data?: object, contentType?: "json" | "form-data") => Promise<any>;
+  request: <T = any>(options: RequestOptions) => Promise<any>;
+  uploadFile: (options: UploadFileOptions) => Promise<any>;
   checkForUpdate: () => Promise<void>;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => void;
   removeUpdateStatusListener: (callback: (status: UpdateStatus) => void) => void;

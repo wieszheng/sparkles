@@ -1,9 +1,9 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MousePointer2 } from "lucide-react";
-import type { ScrollNode } from "@/components/type";
+
 import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 
@@ -16,6 +16,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+type ScrollNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    selector: string;
+    direction: string;
+    scrollTarget: string;
+    distance?: number;
+    smooth?: string;
+    speed?: string;
+  };
+}>;
 
 export function ScrollNode({ data, id }: NodeProps<ScrollNode>) {
   const updateConfig = (key: string, value: string) => {

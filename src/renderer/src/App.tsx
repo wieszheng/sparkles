@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Project } from "@/components/Project";
-import { type Project as ProjectType, TestCases } from "@/components/TestCase";
 import { AutomationFlow } from "@/components/Automation";
 import { Dashboard } from "@/components/Dashboard";
 import { Settings } from "@/components/Settings";
@@ -19,18 +18,18 @@ import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import { ScreenMirror } from "@/components/ScreenMirror";
 import { Route, Routes } from "react-router-dom";
 import {
+  Check,
+  ChevronRight,
+  Cog,
+  FileOutput,
+  FileText,
   FolderPlus,
+  List,
+  Loader2,
   Minus,
+  PackagePlus,
   Square,
   X,
-  Cog,
-  PackagePlus,
-  Loader2,
-  ChevronRight,
-  Check,
-  FileText,
-  List,
-  FileOutput,
 } from "lucide-react";
 
 import {
@@ -53,9 +52,10 @@ import { AiChat } from "@/components/Chat";
 // import { Intelligence } from "@/components/Intelligence";
 import { FrameAnalyzer } from "@/components/FrameAnalyzer";
 import { Monitoring } from "@/components/Monitoring";
-import { QRCode } from "@/components/QRCode.tsx";
+import { QRCode } from "@/components/QRCode";
 import { AiTest } from "@/components/ai-test";
-import { AppStep } from "@/components/ai-test/types.ts";
+import { TestCases } from "@/components/TestCase";
+import { AppStep } from "@/components/ai-test/types";
 
 // 定义设备类型
 interface Device {
@@ -72,10 +72,8 @@ function Main() {
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
 
   // 项目选择
-  const [projects, setProjects] = useState<ProjectType[]>([]);
-  const [selectedProject, setSelectedProject] = useState<ProjectType | null>(
-    null,
-  );
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({

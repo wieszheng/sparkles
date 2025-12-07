@@ -1,9 +1,11 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
+import type { NodeProps, Node } from "@xyflow/react";
+
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
-import type { CloseNode } from "@/components/type";
+
 import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 
@@ -15,7 +17,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
+
+type CloseNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    waitTime?: number;
+    closeMode?: string;
+    target?: string;
+  };
+}>;
+
 export function CloseNode({ data, id }: NodeProps<CloseNode>) {
   const updateConfig = (key: string, value: string) => {
     if (data.onConfigChange) {

@@ -88,21 +88,6 @@ const getStatusText = (status: string) => {
   }
 };
 
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  progress: number;
-  testCases: number;
-  passRate: number;
-  lastRun: string;
-  team: string[];
-  aiInsights: boolean;
-  template?: string;
-  tags?: string[];
-}
-
 export function Project({ action }: { action: boolean }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");

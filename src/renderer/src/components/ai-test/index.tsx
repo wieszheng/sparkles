@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-import { AppStep, type TestCase, type TestPoint } from "./types";
 import {
   analyzeRequirements,
   generateTestCases,
@@ -9,6 +8,7 @@ import { InputSection } from "./input-section";
 import { TestPointsReview } from "./test-points-review";
 import { ResultsView } from "./results-view";
 import { Bot, Sparkles } from "lucide-react";
+import { AppStep } from "./types";
 
 interface AIGenerateTestCaseProps {
   onStepChange: (step: AppStep) => void;

@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ScriptFile } from "./types";
+
 import { mockApps } from "./mock-data";
 
 interface CreateTaskDialogProps {

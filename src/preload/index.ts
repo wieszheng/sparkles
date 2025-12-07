@@ -1,22 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
-import type { Target } from "../types";
 
-interface UpdateStatus {
-  status:
-    | "checking"
-    | "update-available"
-    | "downloading"
-    | "progress"
-    | "ready"
-    | "up-to-date"
-    | "error";
-  message: string;
-  versionInfo?: { version: string; releaseDate: string; releaseNotes?: string };
-  progress?: number; // 0-100
-}
-
-// Custom APIs for renderer
 const api = {
   // API请求转发
   callApi: (
@@ -31,6 +15,14 @@ const api = {
       data,
       contentType,
     });
+  },
+
+  request: (options: RequestOptions) => {
+    return ipcRenderer.invoke("call-api-request", options);
+  },
+
+  uploadFile: (options: UploadFileOptions) => {
+    return ipcRenderer.invoke("call-api-upload", options);
   },
   // 自动更新相关API
   checkForUpdate: (): Promise<void> => ipcRenderer.invoke("check-for-update"),
@@ -102,14 +94,13 @@ const api = {
     ipcRenderer.invoke("open-file-dialog", options),
   showSaveDialog: (options: any) =>
     ipcRenderer.invoke("show-save-dialog", options),
-  
+
   // 文件操作API
   saveFile: (filePath: string, data: ArrayBuffer) =>
     ipcRenderer.invoke("save-file", filePath, Array.from(new Uint8Array(data))),
-  
+
   // 读取本地文件API
-  readFile: (filePath: string) =>
-    ipcRenderer.invoke("read-file", filePath),
+  readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
 
   // 工作流执行相关API
   executeWorkflow: (nodes: any[], edges: any[], connectKey: string) =>

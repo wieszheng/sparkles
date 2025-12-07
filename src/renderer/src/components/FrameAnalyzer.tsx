@@ -48,13 +48,6 @@ import { FrameListOptimized } from "@/components/video/FrameListOptimized";
 
 type VideoStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
 
-interface Frame {
-  id: number;
-  frame_index: number;
-  timestamp: number;
-  url: string;
-}
-
 interface VideoItem {
   id: string;
   filename: string;
@@ -74,7 +67,11 @@ interface Task {
   name: string;
 }
 
-export function FrameAnalyzer({ selectedProject }: { selectedProject: any }) {
+export function FrameAnalyzer({
+  selectedProject,
+}: {
+  selectedProject: Project | null;
+}) {
   console.log(selectedProject);
   const [selectedTask, setSelectedTask] = useState<string>("1");
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);

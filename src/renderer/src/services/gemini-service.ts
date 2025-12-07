@@ -1,9 +1,4 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
-import type {
-  AnalysisResult,
-  GenerationResult,
-  TestPoint,
-} from "@/components/ai-test/types";
 
 const ai = new GoogleGenAI({
   apiKey: "",

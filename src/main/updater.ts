@@ -2,21 +2,6 @@ import { autoUpdater } from "electron-updater";
 import { BrowserWindow, ipcMain, app } from "electron";
 import log from "electron-log";
 
-export interface UpdateStatus {
-  status:
-    | "checking"
-    | "update-available"
-    | "downloading"
-    | "progress"
-    | "ready"
-    | "up-to-date"
-    | "error";
-  message: string;
-
-  versionInfo?: { version: string; releaseDate: string; releaseNotes?: string };
-  progress?: number; // 0-100
-}
-
 let mainWindow: BrowserWindow;
 
 function sendStatusToWindow(status: UpdateStatus) {

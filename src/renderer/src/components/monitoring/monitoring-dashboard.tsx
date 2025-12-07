@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Square, Zap } from "lucide-react";
-import type { MonitoringTask, MonitorConfig } from "./types";
+
 import { MonitoringChart } from "./monitoring-chart";
 import { TaskStatusBadge } from "./task-status-badge";
 

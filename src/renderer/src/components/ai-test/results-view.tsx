@@ -23,7 +23,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import type { TestCase } from "./types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

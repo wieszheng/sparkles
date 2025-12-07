@@ -1,10 +1,4 @@
 import { Hdc, Client } from "hdckit";
-import type {
-  GetTargets,
-  Screencap,
-  StartScreenRecording,
-  StopScreenRecording,
-} from "../../types";
 import { BrowserWindow } from "electron";
 import * as os from "node:os";
 import path from "node:path";

@@ -1,10 +1,10 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Clock, Search } from "lucide-react";
-import type { WaitNode } from "@/components/type";
-import { getCardStyle, getStatusBadge } from "@/components/status.tsx";
+
+import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 import { SelectorDialog } from "@/components/selector-dialog";
 import { Button } from "@/components/ui/button.tsx";
@@ -16,6 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+type WaitNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    duration: number;
+    unit: "seconds" | "milliseconds";
+    waitType: "fixed" | "arise" | "vanish";
+    selector?: string;
+  };
+}>;
 
 export function WaitNode({ data, id }: NodeProps<WaitNode>) {
   const updateConfig = (key: string, value: string) => {

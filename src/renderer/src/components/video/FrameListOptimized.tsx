@@ -16,13 +16,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-interface Frame {
-  id: number;
-  frame_index: number;
-  timestamp: number;
-  url: string;
-}
-
 interface FrameListOptimizedProps {
   frames: Frame[];
   selectedFrame: number | null;

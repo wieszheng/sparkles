@@ -1,19 +1,7 @@
 import { BrowserWindow } from "electron";
 import { Client } from "hdckit";
-import { WorkflowOperations } from "./hdc/workflow-operations";
-import type {
-  ExecutionContext,
-  ExecutionLogEntry,
-  NodeConfig,
-  WorkflowNode,
-  WorkflowEdge,
-  SerializedExecutionContext,
-} from "../types/workflow";
+import { WorkflowOperations } from "./hdc";
 
-/**
- * 主进程工作流执行器
- * 负责实际的工作流执行逻辑和设备操作
- */
 export class MainWorkflowExecutor {
   private context: ExecutionContext = {
     isRunning: false,
@@ -42,9 +30,6 @@ export class MainWorkflowExecutor {
     this.mainWindow = mainWindow;
   }
 
-  /**
-   * 更新执行上下文并同步到渲染进程
-   */
   private updateContext(updates: Partial<ExecutionContext>) {
     this.context = { ...this.context, ...updates };
 
@@ -119,9 +104,6 @@ export class MainWorkflowExecutor {
     console[logLevel](`${statusIcon} ${logEntry.message}`);
   }
 
-  /**
-   * 从详细信息中提取关键信息
-   */
   private extractKeyInfo(details: object): string {
     if (!details || typeof details !== "object") return "";
 
@@ -144,9 +126,6 @@ export class MainWorkflowExecutor {
     return info.join(", ");
   }
 
-  /**
-   * 根据状态获取日志级别
-   */
   private getLogLevel(
     status: ExecutionLogEntry["status"],
   ): "log" | "warn" | "error" {
@@ -162,9 +141,6 @@ export class MainWorkflowExecutor {
     }
   }
 
-  /**
-   * 更新节点状态到执行上下文中
-   */
   private updateNodeStatus(
     nodeId: string,
     status: ExecutionLogEntry["status"],
@@ -175,12 +151,9 @@ export class MainWorkflowExecutor {
     }
 
     // 更新节点状态映射
-    this.context.nodeStatuses[nodeId] = status as any;
+    this.context.nodeStatuses[nodeId] = status;
   }
 
-  /**
-   * 更新执行统计信息
-   */
   private updateExecutionStats(
     nodeId: string,
     status: ExecutionLogEntry["status"],
@@ -396,7 +369,7 @@ export class MainWorkflowExecutor {
     );
 
     const startTime = Date.now();
-    let executionResult: any = null;
+    let executionResult = null;
 
     try {
       // 直接执行节点逻辑
@@ -524,9 +497,6 @@ export class MainWorkflowExecutor {
     }
   }
 
-  /**
-   * 验证节点配置
-   */
   private validateNodeConfig(node: any): void {
     const config = node.data.config || {};
     const nodeType = node.type;
@@ -857,9 +827,6 @@ export class MainWorkflowExecutor {
     }
   }
 
-  /**
-   * Get scroll direction description
-   */
   private getScrollDirectionText(direction: string): string {
     switch (direction) {
       case "up":
@@ -965,9 +932,6 @@ export class MainWorkflowExecutor {
     }
   }
 
-  /**
-   * Get operator description
-   */
   private getOperatorText(operator: string): string {
     switch (operator) {
       case "exists":
@@ -1034,9 +998,6 @@ export class MainWorkflowExecutor {
     return { shouldLoop: false };
   }
 
-  /**
-   * Get loop type description
-   */
   private getLoopTypeText(loopType: string): string {
     switch (loopType) {
       case "count":
@@ -1065,9 +1026,6 @@ export class MainWorkflowExecutor {
     });
   }
 
-  /**
-   * Get wait type description
-   */
   private getWaitTypeText(duration: number): string {
     if (duration < 1000) {
       return "Short Wait";

@@ -1,12 +1,12 @@
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Move, Search } from "lucide-react";
 import { SelectorDialog } from "@/components/selector-dialog";
-import type { SwipeNode } from "@/components/type";
-import { getCardStyle, getStatusBadge } from "@/components/status.tsx";
+
+import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 
 import {
@@ -17,6 +17,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+type SwipeNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    selector?: string;
+    direction: SwipeDirection;
+    distance?: number;
+    duration?: number;
+    startX?: number;
+    startY?: number;
+    endX?: number;
+    endY?: number;
+  };
+}>;
 
 export function SwipeNode({ data, id }: NodeProps<SwipeNode>) {
   const updateConfig = (key: string, value: string | number) => {

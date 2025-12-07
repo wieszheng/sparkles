@@ -25,7 +25,7 @@ import {
   Trash2,
   ListTodo,
 } from "lucide-react";
-import type { MonitoringTask } from "./types";
+
 import { TaskStatusBadge } from "./task-status-badge";
 
 interface TaskManagementProps {

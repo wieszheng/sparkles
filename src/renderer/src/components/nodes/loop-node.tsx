@@ -1,12 +1,12 @@
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Search } from "lucide-react";
 import { SelectorDialog } from "@/components/selector-dialog";
-import type { LoopNode } from "@/components/type";
-import { getCardStyle, getStatusBadge } from "@/components/status.tsx";
+
+import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 import {
   Select,
@@ -15,8 +15,22 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select.tsx";
-
+} from "@/components/ui/select";
+type LoopNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  config: {
+    type: LoopType;
+    count?: number;
+    selector?: string;
+    condition?: string;
+    maxIterations?: number;
+    waitTime?: string;
+  };
+}>;
 export function LoopNode({ data, id }: NodeProps<LoopNode>) {
   const updateConfig = (key: string, value: string) => {
     if (data.onConfigChange) {

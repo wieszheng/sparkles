@@ -1,10 +1,11 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MousePointer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ClickNode } from "@/components/type";
+
 import {
   Select,
   SelectContent,
@@ -17,6 +18,22 @@ import { getCardStyle, getStatusBadge } from "@/components/status";
 import { AnimatedNodeWrapper } from "@/components/animated-node-wrapper";
 import { CanvasSelectorDialog } from "@/components/canvas-selector-dialog";
 
+type ClickNode = Node<{
+  executionStatus: Status;
+  isCurrentNode: boolean;
+  onConfigChange: (newConfig) => void;
+  onSingleNodeExecute?: (nodeId: string) => void;
+  progress?: number;
+  selectedDevice: string;
+  config: {
+    selector?: string;
+    x?: number;
+    y?: number;
+    clickType?: string;
+    waitTime?: string;
+    retryCount?: string;
+  };
+}>;
 export function ClickNode({ data, id }: NodeProps<ClickNode>) {
   const updateConfig = (key: string, value: string | number) => {
     if (data.onConfigChange) {

@@ -1,8 +1,5 @@
 import React from "react";
-import type {
-  ExecutionContext,
-  ExecutionLogEntry,
-} from "../../../types/workflow";
+
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {

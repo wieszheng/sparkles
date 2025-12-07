@@ -18,7 +18,7 @@ import {
   Thermometer,
   Battery,
 } from "lucide-react";
-import type { MonitorConfig } from "./types";
+
 import { monitorMetrics } from "./mock-data";
 
 interface MonitoringConfigProps {

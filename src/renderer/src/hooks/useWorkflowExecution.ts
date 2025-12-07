@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Node, Edge } from "@xyflow/react";
-import type { NodeExecutionStatus } from "../../../types/workflow";
 
 export interface WorkflowExecutionState {
   isRunning: boolean;

@@ -36,14 +36,8 @@ import { ConditionalEdge } from "@/components/conditional-edge";
 import { ExecutionLogDialog } from "@/components/execution-log";
 
 import { motion } from "framer-motion";
-import type { Status } from "@/components/type";
+
 import { useTheme } from "@/components/theme-provider";
-import type {
-  SerializedExecutionContext,
-  NodeExecutionStatus,
-  WorkflowData,
-} from "../../../types/workflow";
-import type { Project } from "@/components/TestCase";
 
 const nodeTypes: NodeTypes = {
   start: StartNode,
@@ -70,6 +64,17 @@ interface AutomationFlowProps {
   selectedDevice: string;
   selectedProject: Project | null;
   testCaseWorkflow?: any;
+}
+
+interface WorkflowData {
+  id?: string;
+  name: string;
+  description?: string;
+  nodes: Node[];
+  edges: Edge[];
+  createdAt?: Date;
+  updatedAt?: Date;
+  version?: string;
 }
 
 export function AutomationFlow({
@@ -226,7 +231,10 @@ export function AutomationFlow({
         const serializableNode = serializeSingleNode(targetNode);
 
         console.log("开始执行单节点:", nodeId);
-        const result = await window.api?.executeSingleNode(serializableNode, selectedDevice);
+        const result = await window.api?.executeSingleNode(
+          serializableNode,
+          selectedDevice,
+        );
 
         // 重置本地执行状态（节点状态由主进程通过 workflow-context-update 同步）
         setExecutionState((prev) => ({
@@ -292,7 +300,12 @@ export function AutomationFlow({
         },
       })),
     );
-  }, [executionState.currentNodeId, setNodes, executeSingleNode, selectedDevice]); // 添加 selectedDevice 到依赖数组
+  }, [
+    executionState.currentNodeId,
+    setNodes,
+    executeSingleNode,
+    selectedDevice,
+  ]); // 添加 selectedDevice 到依赖数组
 
   // 设置节点状态更新器
   useEffect(() => {

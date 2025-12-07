@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import type { TaskStatus } from "./types";
 
 interface TaskStatusBadgeProps {
   status: TaskStatus;

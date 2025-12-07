@@ -1,12 +1,6 @@
-import type React from "react";
-export type TaskStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "stopped"
-  | "error";
+type TaskStatus = "pending" | "running" | "completed" | "stopped" | "error";
 
-export interface MonitoringTask {
+interface MonitoringTask {
   id: number;
   name: string;
   script: string;
@@ -26,7 +20,7 @@ export interface MonitoringTask {
   };
 }
 
-export interface ScriptFile {
+interface ScriptFile {
   id: number;
   name: string;
   label: string;
@@ -34,7 +28,7 @@ export interface ScriptFile {
   lastModified: string;
 }
 
-export interface MonitorConfig {
+interface MonitorConfig {
   cpu: boolean;
   memory: boolean;
   temperature: boolean;
@@ -43,7 +37,7 @@ export interface MonitorConfig {
   interval: string;
 }
 
-export interface MonitorMetric {
+interface MonitorMetric {
   key: string;
   label: string;
   icon: React.ComponentType<{

@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   CheckCircle2Icon,
 } from "lucide-react";
-import type { TestPoint } from "./types";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
