@@ -73,7 +73,6 @@ export const analyzeRequirements = async (
   // 如果有图片文件，添加图片信息到消息中
   if (files.length > 0) {
     for (const file of files) {
-      const part = await fileToGenerativePart(file);
       messages.push({
         role: "user",
         content: `[图片文件：${file.name}，类型：${file.type}，大小：${file.size}字节]`,

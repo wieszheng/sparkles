@@ -128,3 +128,26 @@ interface Frame {
   timestamp: number;
   url: string;
 }
+
+interface FrameMark {
+  timestamp: number; // in seconds
+  thumbnailUrl: string;
+}
+
+interface VideoItem {
+  id: string;
+  name: string;
+  url: string; // Blob URL
+  fps: number; // 30 or 60
+  duration: number; // video duration in seconds
+  startFrame: FrameMark | null;
+  endFrame: FrameMark | null;
+}
+
+interface Task {
+  id: string;
+  name: string;
+  createdAt: number;
+  videos: VideoItem[];
+  description?: string;
+}

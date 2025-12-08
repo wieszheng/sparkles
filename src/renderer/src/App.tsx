@@ -50,12 +50,13 @@ import { toast } from "sonner";
 import { Toolbar } from "@/components/Toolbar";
 import { AiChat } from "@/components/Chat";
 // import { Intelligence } from "@/components/Intelligence";
-import { FrameAnalyzer } from "@/components/FrameAnalyzer";
+// import { FrameAnalyzer } from "@/components/FrameAnalyzer";
 import { Monitoring } from "@/components/Monitoring";
 import { QRCode } from "@/components/QRCode";
 import { AiTest } from "@/components/ai-test";
 import { TestCases } from "@/components/TestCase";
 import { AppStep } from "@/components/ai-test/types";
+import { FrameMark } from "@/components/frame-mark";
 
 // 定义设备类型
 interface Device {
@@ -185,7 +186,7 @@ function Main() {
       case "screen-mirror":
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
       case "video-frame-analyzer":
-        return <FrameAnalyzer selectedProject={selectedProject} />;
+        return <FrameMark />;
       case "monitoring":
         return <Monitoring />;
       case "toolbar":
