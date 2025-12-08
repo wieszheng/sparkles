@@ -9,6 +9,7 @@ import { TestPointsReview } from "./test-points-review";
 import { ResultsView } from "./results-view";
 import { Bot, Sparkles } from "lucide-react";
 import { AppStep } from "./types";
+import { motion } from "framer-motion";
 
 interface AIGenerateTestCaseProps {
   onStepChange: (step: AppStep) => void;
@@ -81,7 +82,7 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
     subtitle: string;
     icon: any;
   }) => (
-    <div className="flex flex-col items-center justify-center h-full bg-background relative overflow-hidden">
+    <div className="flex flex-col items-center justify-center h-full relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-background to-background"></div>
 
       <div className="relative z-10 flex flex-col items-center gap-8">
@@ -119,7 +120,12 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
   );
 
   return (
-    <div className="relative flex flex-col h-full">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="relative flex flex-col h-full"
+    >
       {/* STATE: INPUT (Empty State Placeholder) */}
       {step === AppStep.INPUT && (
         <InputSection
@@ -173,6 +179,6 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
           onBack={reset}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

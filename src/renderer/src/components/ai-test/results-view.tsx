@@ -468,7 +468,7 @@ export function ResultsView({ testCases, onBack }: ResultsViewProps) {
                           <TableCell>
                             <Badge>{tc.type}</Badge>
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="text-sm whitespace-pre-line">
                             {tc.precondition}
                           </TableCell>
                           <TableCell className="text-sm whitespace-pre-line">

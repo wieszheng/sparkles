@@ -40,7 +40,7 @@ export const analyzeRequirements = async (
     1. 用中文总结功能点（2-3句话）。
     2. 提取清晰的测试点（Test Points）。
     
-    请按照逻辑类别分组（例如：功能测试、UI测试、异常测试、安全测试）。
+    请按照逻辑类别分组（例如：功能、边界、安全、性能、兼容性、异常、UI）。
     返回的 JSON 数据中，summary 和 description 必须使用中文。
     
     ${textInput ? `需求描述: ${textInput}` : ""}
@@ -61,7 +61,7 @@ export const analyzeRequirements = async (
   "testPoints": [
     {
       "id": "唯一标识符",
-      "category": "分类，例如：功能、UI、性能、安全",
+      "category": "分类，例如：功能、边界、安全、性能、兼容性、异常、UI",
       "description": "测试点的中文描述"
     }
   ]
@@ -138,7 +138,7 @@ export const generateTestCases = async (
     
     字段说明:
     - priority: 使用 P0, P1, P2
-    - type: 使用 功能测试, UI测试, 性能测试, 安全测试
+    - type: 使用 功能, 边界, 安全, 性能, 兼容性, 异常, UI
     
     请严格按照以下JSON格式返回：
 {
@@ -150,7 +150,7 @@ export const generateTestCases = async (
       "steps": ["步骤1", "步骤2", "步骤3"],
       "expectedResult": "预期结果",
       "priority": "P0|P1|P2",
-      "type": "功能测试|UI测试|性能测试|安全测试"
+      "type": "功能|边界|安全|性能|兼容性|异常|UI"
     }
   ]
 }
