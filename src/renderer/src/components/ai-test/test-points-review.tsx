@@ -32,7 +32,7 @@ import {
 
 const CATEGORIES = ["功能", "边界", "安全", "性能", "兼容性", "异常", "UI"];
 
-// 规范化category名称，处理可能的AI返回不一致问题
+// 规范化category名称，处理AI返回不一致问题
 function normalizeCategory(category: string): string {
   if (!category) return "功能";
 

@@ -57,6 +57,6 @@ publish:
 releaseInfo:
   releaseNotes: |
     本次更新:
-      修复应用获取异常
-      增加二维码生成
+      重新智能生成用例
+      优化二维码生成
       修复已知问题
