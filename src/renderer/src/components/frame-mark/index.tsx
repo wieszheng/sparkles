@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { FrameSidebar } from "@/components/frame-mark/FrameSidebar";
 import { VideoWorkspace } from "@/components/frame-mark/VideoWorkspace";
 
@@ -94,7 +94,7 @@ export function FrameMark() {
             setActiveTaskData({ ...activeTaskData, videos: updatedVideos });
           }
         } catch (e) {
-          /* ignore poll error */
+          console.log(e);
         }
       }
 
@@ -113,10 +113,10 @@ export function FrameMark() {
             return detail;
           });
         } catch (e) {
-          /* ignore */
+          console.log(e);
         }
       }
-    }, 2000);
+    }, 8000);
 
     return () => clearInterval(pollInterval);
   }, [activeVideoId, activeVideoDetail, activeTaskData]);
@@ -130,7 +130,7 @@ export function FrameMark() {
       setActiveTaskId(newTask.id);
       setActiveVideoId(null);
     } catch (e) {
-      alert("Failed to create task");
+      console.log(e);
     }
   };
 
@@ -144,7 +144,7 @@ export function FrameMark() {
         setActiveVideoId(null);
       }
     } catch (e) {
-      alert("Failed to delete task");
+      console.log(e);
     }
   };
 
@@ -203,11 +203,10 @@ export function FrameMark() {
         const res = await api.submitFrameMarking(videoId, {
           first_frame_id: targetStart,
           last_frame_id: targetEnd,
-          reviewer: "user", // simple mock user
+          reviewer: "user",
         });
-        // Update local state with confirmed data
+
         if (activeTaskData) {
-          // Refresh task to update stats
           const task = await api.getTaskDetail(activeTaskData.id);
           setActiveTaskData(task);
         }
@@ -255,7 +254,7 @@ export function FrameMark() {
     document.body.removeChild(link);
   };
   return (
-    <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden">
+    <div className="flex h-full">
       <FrameSidebar
         tasks={tasks}
         activeTaskId={activeTaskId}
@@ -284,7 +283,6 @@ export function FrameMark() {
         )}
         <VideoWorkspace
           videoDetail={activeVideoDetail}
-          // Pass summary info if detail is loading/missing but we have it in list
           videoSummary={activeTaskData?.videos.find(
             (v) => v.video_id === activeVideoId,
           )}

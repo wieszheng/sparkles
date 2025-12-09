@@ -4,11 +4,11 @@ import {
   analyzeRequirements,
   generateTestCases,
 } from "@/services/zhipuai-service";
-import { InputSection } from "./input-section";
-import { TestPointsReview } from "./test-points-review";
-import { ResultsView } from "./results-view";
+import { InputSection } from "@/components/ai-test/input-section";
+import { TestPointsReview } from "@/components/ai-test/test-points-review";
+import { ResultsView } from "@/components/ai-test/results-view";
 import { Bot, Sparkles } from "lucide-react";
-import { AppStep } from "./types";
+import { AppStep } from "@/components/ai-test/types";
 import { motion } from "framer-motion";
 
 interface AIGenerateTestCaseProps {

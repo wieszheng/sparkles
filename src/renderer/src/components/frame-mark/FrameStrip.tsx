@@ -44,18 +44,18 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
     <>
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex items-center justify-between mb-2 shrink-0 px-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <h3 className="text-sm font-bold uppercase tracking-wider flex items-center">
             {title}
-            <span className="text-[10px] font-normal normal-case text-muted-foreground/70 bg-secondary/50 px-1.5 py-0.5 rounded">
-              Total: {frames.length} frames
+            <span className="text-xs font-normal normal-case text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded">
+              总数: {frames.length} frames
             </span>
           </h3>
-          <span className="text-[10px] text-muted-foreground/50 hidden sm:inline-block">
-            Double-click image to select
+          <span className="text-xs text-muted-foreground hidden sm:inline-block">
+            双击图像以选中
           </span>
         </div>
 
-        <div className="flex-1 min-h-0 relative group/strip bg-black/5 rounded-md border border-border/50 overflow-hidden">
+        <div className="flex-1 min-h-0 relative group/strip overflow-hidden">
           {/* Left Button - Overlay */}
           <Button
             variant="ghost"

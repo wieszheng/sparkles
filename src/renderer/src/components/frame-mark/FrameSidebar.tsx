@@ -3,7 +3,6 @@ import {
   Upload,
   FileVideo,
   Download,
-  FolderOpen,
   Plus,
   Trash2,
   Loader2,
@@ -40,7 +39,7 @@ interface SidebarProps {
   isUploading?: boolean;
 }
 
-export const FrameSidebar: React.FC<SidebarProps> = ({
+export function FrameSidebar({
   tasks,
   activeTaskId,
   activeVideoId,
@@ -52,7 +51,7 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
   onSelectVideo,
   onExportData,
   isUploading,
-}) => {
+}: SidebarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,70 +76,48 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="w-80 h-full border-r border-border bg-card flex flex-col">
-      {/* App Header */}
-      <div className="p-4 border-b border-border">
-        <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-          <FolderOpen className="w-6 h-6" />
-          FrameTime
-        </h1>
-      </div>
-
+    <div className="w-75 h-full bg-card flex flex-col">
       {/* Task Management Section */}
-      <div className="p-4 border-b border-border space-y-4 bg-muted/20">
+      <div className="p-2 space-y-4">
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Current Task
-          </label>
-          <Select value={activeTaskId} onValueChange={onSelectTask}>
-            <SelectTrigger>
+          <label className="text-sm">当前任务</label>
+          <Select value={activeTaskId!} onValueChange={onSelectTask}>
+            <SelectTrigger className="w-full mt-2">
               <SelectValue
                 placeholder={activeTask ? activeTask.name : "Select a task..."}
               />
             </SelectTrigger>
             <SelectContent>
-              {tasks.length === 0 ? (
-                <div className="p-2 text-sm text-muted-foreground text-center">
-                  No tasks found
-                </div>
-              ) : (
-                tasks.map((task) => (
-                  <SelectItem key={task.id} value={task.id}>
-                    <div className="flex items-center justify-between w-full gap-2">
-                      <span className="truncate">{task.name}</span>
-                    </div>
-                  </SelectItem>
-                ))
-              )}
+              {tasks.map((task) => (
+                <SelectItem key={task.id} value={task.id}>
+                  {task.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button
-            className="w-full flex items-center gap-1"
-            onClick={() => setIsDialogOpen(true)}
-          >
+          <Button size="sm" onClick={() => setIsDialogOpen(true)}>
             <Plus className="w-4 h-4" />
-            New Task
+            创建
           </Button>
 
           <Button
             variant="outline"
-            className="w-full flex items-center gap-1"
+            size="sm"
             onClick={onExportData}
             disabled={!activeTaskId}
-            title="Export CSV"
           >
             <Download className="w-4 h-4" />
-            Export
+            导出
           </Button>
         </div>
       </div>
 
       {/* Create Task Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-w-[425px] bg-card">
           <DialogClose onClick={() => setIsDialogOpen(false)} />
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
@@ -177,25 +154,24 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
 
       {/* Video List */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 pb-2 flex items-center justify-between">
+        <div className="p-2 pb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            Videos
+            视频列表
           </h2>
           {activeTaskId && (
-            <div className="flex gap-1">
+            <div>
               <Button
                 size="sm"
-                variant="secondary"
-                className="h-8 px-2 text-xs"
+                variant="ghost"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
                 {isUploading ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
-                  <Upload className="w-3 h-3 mr-1" />
+                  <Upload className="w-3 h-3" />
                 )}
-                {isUploading ? "Uploading..." : "Add Video"}
+                {isUploading ? "上传中..." : "上传视频"}
               </Button>
               <input
                 type="file"
@@ -214,12 +190,12 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
               <span className="text-sm">Select or create a task</span>
             </div>
           ) : activeTaskVideos.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4 text-center border-2 border-dashed border-border rounded-lg m-2 bg-muted/10">
+            <div className="flex flex-col items-center justify-center text-muted-foreground p-4 text-center border-2 border-dashed border-border rounded-lg m-2">
               <Upload className="w-8 h-8 mb-2 opacity-30" />
-              <span className="text-sm">
-                No videos yet.
+              <span className="text-xs font-bold">
+                目前还没有视频
                 <br />
-                Click 'Add Video' to start.
+                点击“添加视频”开始。
               </span>
             </div>
           ) : (
@@ -227,13 +203,13 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
               <div
                 key={video.video_id}
                 onClick={() => onSelectVideo(video.video_id)}
-                className={`flex items-center gap-3 p-3 rounded-md cursor-pointer border transition-all ${
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all ${
                   activeVideoId === video.video_id
                     ? "bg-accent border-primary/20 shadow-sm"
                     : "bg-card border-transparent hover:bg-muted/50"
                 }`}
               >
-                <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
                   <FileVideo className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -242,7 +218,7 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full uppercase ${
+                      className={`text-[10px] px-1.5 py-0.5 rounded-lg uppercase ${
                         video.video_status === "completed" ||
                         video.video_status === "reviewed"
                           ? "bg-green-100 text-green-700"
@@ -263,7 +239,7 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
                               video.last_frame_time - video.first_frame_time
                             ).toFixed(2)
                           : video.duration?.toFixed(2)}
-                        s
+                        毫秒
                       </span>
                     )}
                   </div>
@@ -282,12 +258,12 @@ export const FrameSidebar: React.FC<SidebarProps> = ({
               className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive h-8 text-xs"
               onClick={() => onDeleteTask(activeTaskId)}
             >
-              <Trash2 className="w-3 h-3 mr-2" />
-              Delete Current Task
+              <Trash2 className="w-3 h-3" />
+              删除当前任务
             </Button>
           </div>
         )}
       </div>
     </div>
   );
-};
+}
