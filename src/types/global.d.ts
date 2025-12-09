@@ -122,32 +122,122 @@ interface Application {
   mainAbility?: string;
 }
 
+// interface Frame {
+//   id: number;
+//   frame_index: number;
+//   timestamp: number;
+//   url: string;
+// }
+
+// interface FrameMark {
+//   timestamp: number; // in seconds
+//   thumbnailUrl: string;
+// }
+//
+// interface VideoItem {
+//   id: string;
+//   name: string;
+//   url: string; // Blob URL
+//   fps: number; // 30 or 60
+//   duration: number; // video duration in seconds
+//   startFrame: FrameMark | null;
+//   endFrame: FrameMark | null;
+// }
+//
+// interface Task {
+//   id: string;
+//   name: string;
+//   createdAt: number;
+//   videos: VideoItem[];
+//   description?: string;
+// }
+
+type VideoStatus =
+  | "uploading"
+  | "processing"
+  | "pending_review"
+  | "reviewed"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+type TaskStatus = "draft" | "in_progress" | "completed" | "archived";
+
+type FrameType = "first" | "last" | "middle";
+
 interface Frame {
-  id: number;
-  frame_index: number;
+  id: string;
+  frame_number: number;
   timestamp: number;
   url: string;
+  frame_type?: FrameType;
 }
 
-interface FrameMark {
-  timestamp: number; // in seconds
-  thumbnailUrl: string;
+// Minimal video info returned in Task list/details
+interface TaskVideoSummary {
+  id: string; // Relation ID (task_video id)
+  video_id: string; // Actual Video ID
+  order: number;
+  duration: number;
+  first_frame_time: number | null;
+  last_frame_time: number | null;
+  notes: string | null;
+  added_at: string;
+  video_filename: string;
+  video_status: VideoStatus;
+  video_width: number;
+  video_height: number;
+  first_frame_url: string | null;
+  last_frame_url: string | null;
 }
 
-interface VideoItem {
-  id: string;
-  name: string;
-  url: string; // Blob URL
-  fps: number; // 30 or 60
-  duration: number; // video duration in seconds
-  startFrame: FrameMark | null;
-  endFrame: FrameMark | null;
+// Detailed Video info returned from /video/status/{id}
+interface VideoDetail {
+  video_id: string;
+  filename: string;
+  status: VideoStatus;
+  duration: number;
+  fps: number;
+  width: number;
+  height: number;
+  task_id: string | null; // Celery task id
+  error_message: string | null;
+  progress: number;
+  current_step: string | null;
+  frames: Frame[];
+  created_at: string;
+  // Merged fields for UI convenience (from selection logic)
+  selected_start_frame_id?: string | null;
+  selected_end_frame_id?: string | null;
 }
 
 interface Task {
   id: string;
   name: string;
-  createdAt: number;
-  videos: VideoItem[];
+  description: string | null;
+  status: TaskStatus;
+  total_videos: number;
+  completed_videos: number;
+  failed_videos: number;
+  total_duration: number | null;
+  avg_duration: number | null;
+  min_duration: number | null;
+  max_duration: number | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  videos: TaskVideoSummary[];
+}
+
+interface CreateTaskRequest {
+  name: string;
   description?: string;
+  created_by?: string;
+}
+
+interface MarkFramesRequest {
+  first_frame_id: string;
+  last_frame_id: string;
+  reviewer?: string;
+  review_notes?: string;
 }
