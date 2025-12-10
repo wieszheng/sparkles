@@ -11,6 +11,7 @@ export function FrameMark() {
 
   // activeTaskData is the detailed task object (with video list)
   const [activeTaskData, setActiveTaskData] = useState<Task | null>(null);
+  const [isTaskLoading, setIsTaskLoading] = useState(false);
 
   // activeVideoDetail is the full detail of the selected video (including frames)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
@@ -28,6 +29,10 @@ export function FrameMark() {
     try {
       const data = await api.getTasks();
       setTasks(data);
+      // Auto-select first task if available and none selected
+      if (data.length > 0 && !activeTaskId) {
+        setActiveTaskId(data[0].id);
+      }
     } catch (e) {
       console.error("Failed to load tasks", e);
     }
@@ -41,11 +46,15 @@ export function FrameMark() {
     }
 
     const fetchTaskDetail = async () => {
+      setIsTaskLoading(true);
+      setActiveTaskData(null); // Clear previous data to avoid mismatch during load
       try {
         const detail = await api.getTaskDetail(activeTaskId);
         setActiveTaskData(detail);
       } catch (e) {
         console.error("Failed to load task detail", e);
+      } finally {
+        setIsTaskLoading(false);
       }
     };
 
@@ -134,20 +143,6 @@ export function FrameMark() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
-    try {
-      await api.deleteTask(taskId);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      if (activeTaskId === taskId) {
-        setActiveTaskId(null);
-        setActiveVideoId(null);
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
   const handleUploadVideo = async (file: File) => {
     if (!activeTaskId) return;
     setIsLoading(true);
@@ -205,7 +200,7 @@ export function FrameMark() {
           last_frame_id: targetEnd,
           reviewer: "user",
         });
-
+        console.log("Marking submitted", res);
         if (activeTaskData) {
           const task = await api.getTaskDetail(activeTaskData.id);
           setActiveTaskData(task);
@@ -261,7 +256,6 @@ export function FrameMark() {
         activeVideoId={activeVideoId}
         activeTaskVideos={activeTaskData?.videos || []}
         onCreateTask={handleCreateTask}
-        onDeleteTask={handleDeleteTask}
         onSelectTask={(id) => {
           setActiveTaskId(id);
           setActiveVideoId(null);
@@ -270,9 +264,10 @@ export function FrameMark() {
         onSelectVideo={setActiveVideoId}
         onExportData={handleExportData}
         isUploading={isLoading}
+        isLoadingVideos={isTaskLoading}
       />
 
-      <main className="flex-1 h-full overflow-hidden relative">
+      <div className="flex-1 h-full overflow-hidden relative">
         {isLoading && (
           <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
             <div className="bg-background p-4 rounded-lg shadow-lg flex items-center gap-3">
@@ -288,7 +283,7 @@ export function FrameMark() {
           )}
           onUpdateFrames={handleUpdateVideoFrame}
         />
-      </main>
+      </div>
     </div>
   );
 }

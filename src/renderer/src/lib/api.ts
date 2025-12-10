@@ -82,10 +82,7 @@ export const api = {
 
   // --- Review ---
 
-  async submitFrameMarking(
-    videoId: string,
-    data: MarkFramesRequest,
-  ): Promise<any> {
+  async submitFrameMarking(videoId: string, data: MarkFramesRequest) {
     const res = await fetch(`${BASE_URL}/review/${videoId}/mark`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,12 +1,5 @@
 import React, { useRef, useState } from "react";
-import {
-  Upload,
-  FileVideo,
-  Download,
-  Plus,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import { Upload, FileVideo, Download, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -32,11 +25,11 @@ interface SidebarProps {
   activeTaskVideos: TaskVideoSummary[];
   onSelectTask: (taskId: string) => void;
   onCreateTask: (name: string) => void;
-  onDeleteTask: (taskId: string) => void;
   onUploadVideo: (file: File) => void;
   onSelectVideo: (videoId: string) => void;
   onExportData: () => void;
   isUploading?: boolean;
+  isLoadingVideos?: boolean;
 }
 
 export function FrameSidebar({
@@ -46,11 +39,11 @@ export function FrameSidebar({
   activeTaskVideos,
   onSelectTask,
   onCreateTask,
-  onDeleteTask,
   onUploadVideo,
   onSelectVideo,
   onExportData,
   isUploading,
+  isLoadingVideos,
 }: SidebarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
@@ -189,6 +182,21 @@ export function FrameSidebar({
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
               <span className="text-sm">Select or create a task</span>
             </div>
+          ) : isLoadingVideos ? (
+            <div className="p-2 space-y-2">
+              {activeTaskVideos.map((video) => (
+                <div
+                  key={video.video_id}
+                  className="flex items-center gap-3 p-2 rounded-lg border border-transparent bg-muted/30"
+                >
+                  <div className="h-8 w-8 rounded bg-muted animate-pulse shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-3/4 bg-muted animate-pulse rounded" />
+                    <div className="h-2 w-1/2 bg-muted animate-pulse rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : activeTaskVideos.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-muted-foreground p-4 text-center border-2 border-dashed border-border rounded-lg m-2">
               <Upload className="w-8 h-8 mb-2 opacity-30" />
@@ -248,21 +256,6 @@ export function FrameSidebar({
             ))
           )}
         </div>
-
-        {/* Delete Task Footer */}
-        {activeTaskId && (
-          <div className="p-2 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive h-8 text-xs"
-              onClick={() => onDeleteTask(activeTaskId)}
-            >
-              <Trash2 className="w-3 h-3" />
-              删除当前任务
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -166,6 +166,7 @@ type TaskStatus = "draft" | "in_progress" | "completed" | "archived";
 type FrameType = "first" | "last" | "middle";
 
 interface Frame {
+  type: string;
   id: string;
   frame_number: number;
   timestamp: number;
