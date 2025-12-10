@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Film,
   Maximize2,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -136,14 +135,14 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
     <>
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex items-center justify-between mb-2 shrink-0 px-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1">
             {title}
-            <span className="text-[10px] font-normal normal-case text-muted-foreground/70 bg-secondary/50 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-normal normal-case text-muted-foreground px-1.5 py-0.5">
               Total: {frames.length}
             </span>
           </h3>
-          <span className="text-[10px] text-muted-foreground/50 hidden sm:inline-block">
-            Double-click to select
+          <span className="text-[10px] text-muted-foreground inline-block">
+            双击以进行选择
           </span>
         </div>
 
@@ -160,7 +159,7 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
           </Button>
 
           {/* Frame List Card */}
-          <div className="flex-1 relative group/strip bg-black/5 rounded-md border border-border/50 overflow-hidden min-w-0">
+          <div className="flex-1 relative overflow-hidden min-w-0">
             <div
               ref={scrollContainerRef}
               className="w-full h-full overflow-x-auto scrollbar-thin px-2 py-1 scroll-smooth flex gap-2 items-center"
@@ -185,7 +184,7 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                       }`}
                     >
                       <div
-                        className={`relative overflow-hidden border shadow-sm bg-black transition-all flex items-center justify-center rounded-sm h-full w-auto ${
+                        className={`relative overflow-hidden border shadow-sm bg-black/20 transition-all flex items-center justify-center rounded-sm h-full w-auto ${
                           isSelected
                             ? `${borderColor} ring-2 ring-offset-0 ${color === "blue" ? "ring-blue-500/50" : "ring-orange-500/50"}`
                             : "border-transparent hover:border-primary/30"
@@ -194,7 +193,7 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                         <img
                           src={frame.url}
                           alt={`Time ${frame.timestamp}`}
-                          className="h-full w-auto block max-w-none object-contain bg-black/20"
+                          className="h-full w-auto block max-w-none object-contain"
                           draggable={false}
                           onDoubleClick={() => onFrameDoubleClick(frame)}
                         />
@@ -206,14 +205,13 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                           <Button
                             size="icon"
                             variant="secondary"
-                            className="h-6 w-6 rounded shadow-sm opacity-90 hover:opacity-100"
-                            title="Preview"
+                            className="h-6 w-6"
                             onClick={(e) => {
                               e.stopPropagation();
                               setPreviewFrame(frame);
                             }}
                           >
-                            <Maximize2 className="w-3.5 h-3.5" />
+                            <Maximize2 />
                           </Button>
                         </div>
 
@@ -258,18 +256,8 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
       >
         {/* Removed background, border, and shadow. Kept size and layout logic. */}
         <DialogContent className="!max-w-[90vw] !w-[90vw] !h-[90vh] !p-0 bg-transparent border-none shadow-none flex flex-col outline-none overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {/* Top Right Close Button */}
-          <div className="absolute top-0 right-0 z-[60]">
-            <button
-              onClick={() => setPreviewFrame(null)}
-              className="bg-black/40 hover:bg-white/20 text-white/70 hover:text-white rounded-full p-2 transition-all backdrop-blur-md border border-white/10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
           {/* Main Content Area */}
-          <div className="flex-1 relative flex items-center justify-center overflow-hidden w-full h-full pb-20">
+          <div className="flex-1 relative flex items-center justify-center w-full h-full pb-45">
             {/* Clickable Background for Close (invisible) */}
             <div
               className="absolute inset-0 z-0"
@@ -281,7 +269,7 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               <img
                 src={previewFrame.url}
                 alt={`Frame ${previewFrame.timestamp}`}
-                className="relative z-10 max-w-full max-h-full w-auto h-auto object-contain shadow-2xl rounded-sm"
+                className="relative z-10 max-w-full max-h-full w-auto h-auto object-contain rounded-sm"
                 draggable={false}
               />
             )}
@@ -291,9 +279,9 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               <button
                 onClick={handlePrev}
                 disabled={currentIndex === 0}
-                className={`pointer-events-auto p-4 rounded-full bg-black/40 border border-white/10 text-white hover:bg-white/10 hover:scale-110 active:scale-95 transition-all backdrop-blur-md shadow-lg ${currentIndex === 0 ? "opacity-0 cursor-default" : "opacity-100 cursor-pointer"}`}
+                className={`pointer-events-auto p-2 rounded-full bg-black/40 text-white hover:bg-white/10 hover:scale-103 active:scale-95 transition-all backdrop-blur-md ${currentIndex === 0 ? "opacity-0 cursor-default" : "opacity-100 cursor-pointer"}`}
               >
-                <ChevronLeft className="w-8 h-8" />
+                <ChevronLeft className="w-6 h-6" />
               </button>
             </div>
 
@@ -302,16 +290,16 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               <button
                 onClick={handleNext}
                 disabled={currentIndex === frames.length - 1}
-                className={`pointer-events-auto p-4 rounded-full bg-black/40 border border-white/10 text-white hover:bg-white/10 hover:scale-110 active:scale-95 transition-all backdrop-blur-md shadow-lg ${currentIndex === frames.length - 1 ? "opacity-0 cursor-default" : "opacity-100 cursor-pointer"}`}
+                className={`pointer-events-auto p-2 rounded-full bg-black/40 text-white hover:bg-white/10 hover:scale-103 active:scale-95 transition-all backdrop-blur-md  ${currentIndex === frames.length - 1 ? "opacity-0 cursor-default" : "opacity-100 cursor-pointer"}`}
               >
-                <ChevronRight className="w-8 h-8" />
+                <ChevronRight className="w-6 h-6" />
               </button>
             </div>
           </div>
 
           {/* Floating HUD Bottom Panel - Integrated inside modal */}
-          <div className="absolute bottom-6 left-0 right-0 z-[60] flex justify-center px-6 pointer-events-none">
-            <div className="w-full max-w-4xl bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-2xl pointer-events-auto flex flex-col gap-3">
+          <div className="absolute bottom-1 left-0 right-0 z-[60] flex justify-center pointer-events-none">
+            <div className="w-full max-w-4xl bg-black/30 backdrop-blur-xl rounded-xl p-4 shadow-2xl pointer-events-auto flex flex-col gap-3">
               {/* Mini Filmstrip */}
               <div
                 className="flex gap-2 overflow-x-auto scrollbar-thin pb-2 px-1"
@@ -319,31 +307,32 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
                 {frames.map((f) => (
-                  <button
+                  <div
                     key={f.id}
                     data-frame-id={f.id}
                     onClick={(e) => {
                       e.stopPropagation();
                       setPreviewFrame(f);
                     }}
-                    className={`relative shrink-0 h-12 w-auto aspect-video rounded-sm overflow-hidden transition-all duration-200 border ${
+                    className={`relative shrink-0 h-12 w-auto aspect-video rounded-sm overflow-hidden border ${
                       f.id === previewFrame?.id
-                        ? "border-white ring-2 ring-white/20 scale-105 opacity-100 z-10"
-                        : "border-transparent opacity-50 hover:opacity-100 hover:scale-105"
+                        ? "border-white ring-2 ring-white/20  opacity-100 z-10"
+                        : "border-transparent opacity-50 hover:opacity-100"
                     }`}
                   >
                     <img
                       src={f.url}
                       className="h-full w-full object-cover"
                       loading="lazy"
+                      alt={f.url}
                     />
                     {/* Small dot for selected frames context */}
                     {selectedFrameId === f.id && (
                       <div
-                        className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${color === "blue" ? "bg-blue-500" : "bg-orange-500"}`}
+                        className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${color === "blue" ? "bg-blue-500" : "bg-orange-500"}`}
                       />
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -351,10 +340,10 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               <div className="flex items-center justify-between pt-2 border-t border-white/10">
                 <div className="flex items-center gap-6 text-white">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-white/50 font-bold tracking-wider uppercase flex items-center gap-1">
-                      <Film className="w-3 h-3" /> Timestamp
+                    <span className="text-xs tracking-wider uppercase flex items-center gap-1">
+                      <Film className="w-3 h-3" /> 时间戳
                     </span>
-                    <span className="font-mono text-xl font-medium tracking-tight">
+                    <span className="text-sm font-medium">
                       {previewFrame?.timestamp.toFixed(3)}
                       <span className="text-sm text-white/50 ml-1">s</span>
                     </span>
@@ -362,30 +351,19 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
 
                   <div className="h-8 w-px bg-white/10"></div>
 
-                  <div className="text-sm font-mono text-white/70">
-                    Frame <span className="text-white">{currentIndex + 1}</span>{" "}
-                    / {frames.length}
+                  <div className="text-sm font-mono">
+                    帧 <span>{currentIndex + 1}</span> / {frames.length}
                   </div>
                 </div>
 
-                <Button
-                  size="lg"
-                  onClick={handleSelect}
-                  className={`h-10 px-8 font-semibold tracking-wide transition-all shadow-lg active:scale-95 border-none ${
-                    isPreviewSelected
-                      ? "bg-green-500 hover:bg-green-600 text-black"
-                      : color === "blue"
-                        ? "bg-blue-600 hover:bg-blue-500 text-white"
-                        : "bg-orange-600 hover:bg-orange-500 text-white"
-                  }`}
-                >
+                <Button size="sm" onClick={handleSelect}>
                   {isPreviewSelected ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Selected</span>
+                      <span>已选中</span>
                     </div>
                   ) : (
-                    <span>Confirm Selection</span>
+                    <span>确认选择</span>
                   )}
                 </Button>
               </div>

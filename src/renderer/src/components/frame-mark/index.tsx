@@ -100,6 +100,7 @@ export function FrameMark() {
                 ? { ...v, video_status: updated.status }
                 : v,
             );
+
             setActiveTaskData({ ...activeTaskData, videos: updatedVideos });
           }
         } catch (e) {

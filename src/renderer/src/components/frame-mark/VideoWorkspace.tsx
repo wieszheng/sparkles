@@ -20,18 +20,15 @@ export function VideoWorkspace({
 }: VideoWorkspaceProps) {
   if (!videoDetail && !videoSummary) {
     return (
-      <div className="flex-1 bg-background flex items-center justify-center text-muted-foreground p-8">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
             <FileVideo className="w-8 h-8 opacity-50" />
           </div>
           <div>
-            <h3 className="text-lg font-medium text-foreground">
-              No Video Selected
-            </h3>
+            <h3 className="text-lg font-medium text-foreground">未选择视频</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Select a video from the sidebar to start analyzing frame
-              latencies.
+              从侧边栏中选择一段视频，开始分析帧延迟情况。
             </p>
           </div>
         </div>
@@ -48,10 +45,10 @@ export function VideoWorkspace({
   // Enhanced Loading UI
   if (status === "processing" || status === "uploading") {
     return (
-      <div className="flex-1 bg-background flex flex-col items-center justify-center p-8">
-        <div className="max-w-md w-full bg-card border border-border shadow-sm rounded-xl p-8 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <div className="max-w-md w-full rounded-xl p-8 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in-95">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping duration-[2000ms]"></div>
+            <div className="absolute inset-0 bg-primary/20 rounded-full"></div>
             <div className="relative bg-primary/10 p-5 rounded-full ring-1 ring-primary/20">
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
@@ -67,21 +64,6 @@ export function VideoWorkspace({
                 : "Analyzing frames, calculating timestamps, and preparing previews."}
             </p>
           </div>
-
-          <div className="w-full space-y-2">
-            <div className="flex justify-between text-xs font-medium text-muted-foreground">
-              <span className="capitalize">
-                {videoDetail?.current_step || "In Progress"}
-              </span>
-              <span>{Math.round(videoDetail?.progress || 0)}%</span>
-            </div>
-            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-500 ease-out rounded-full"
-                style={{ width: `${Math.max(5, videoDetail?.progress || 0)}%` }}
-              />
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -89,7 +71,7 @@ export function VideoWorkspace({
 
   if (status === "failed") {
     return (
-      <div className="flex-1 bg-background flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-md text-center space-y-4">
           <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto text-destructive">
             <FileVideo className="w-6 h-6" />
@@ -193,103 +175,97 @@ export function VideoWorkspace({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50/50 overflow-hidden">
-      {/* Top Details Panel */}
-      <div className="bg-background border-b border-border p-4 shadow-sm shrink-0 z-10">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h1
-              className="text-lg font-bold text-foreground truncate"
-              title={name}
-            >
-              {name}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-              <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">
-                {status?.replace("_", " ").toUpperCase()}
-              </span>
-              <span>Duration: {duration.toFixed(2)}s</span>
-              <span>•</span>
-              <span>{allFrames.length} frames loaded</span>
+    <div className="flex-1 flex flex-col h-full">
+      <div className="flex items-center justify-between">
+        <div className="min-w-0 ml-2">
+          <h1
+            className="text-sm font-bold text-foreground truncate"
+            title={name}
+          >
+            {name}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Duration: {duration.toFixed(2)}s Fps: {videoDetail?.fps}
+          </p>
+        </div>
+
+        {/* Stats Card */}
+        <div className="flex items-center gap-4 bg-secondary/30 p-2 rounded-lg border border-border/50 shrink-0">
+          {/* Start Time Block */}
+          <div className="text-center relative group cursor-help min-w-[70px]">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
+              开始
             </p>
+            <p className="font-mono font-medium text-blue-600 leading-none">
+              {startFrame ? `${startFrame.timestamp.toFixed(3)}s` : "--"}
+            </p>
+            {startFrame && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 hidden group-hover:block z-50">
+                <div className="bg-popover border border-border shadow-xl rounded-md p-1 w-48">
+                  <img
+                    src={startFrame.url}
+                    alt="Start frame"
+                    className="w-full h-auto rounded-sm"
+                  />
+                  <div className="text-[10px] text-center mt-1 text-muted-foreground">
+                    Frame at {startFrame.timestamp.toFixed(3)}s
+                  </div>
+                </div>
+
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-popover border-t border-l border-border transform rotate-45"></div>
+              </div>
+            )}
           </div>
 
-          {/* Stats Card */}
-          <div className="flex items-center gap-4 bg-secondary/30 p-2 px-4 rounded-lg border border-border/50 shrink-0">
-            {/* Start Time Block */}
-            <div className="text-center relative group cursor-help">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
-                Start
-              </p>
-              <p className="text-lg font-mono font-medium text-blue-600 leading-none">
-                {startFrame ? `${startFrame.timestamp.toFixed(3)}s` : "--"}
-              </p>
-              {startFrame && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 hidden group-hover:block z-50">
-                  <div className="bg-popover border border-border shadow-xl rounded-md p-1 w-48">
-                    <img
-                      src={startFrame.url}
-                      alt="Start frame"
-                      className="w-full h-auto rounded-sm"
-                    />
-                    <div className="text-[10px] text-center mt-1 text-muted-foreground">
-                      Frame at {startFrame.timestamp.toFixed(3)}s
-                    </div>
+          <ArrowRight className="text-muted-foreground/70 w-4 h-4" />
+
+          {/* End Time Block */}
+          <div className="text-center relative group cursor-help min-w-[70px]">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
+              结束
+            </p>
+            <p className="font-mono font-medium text-orange-600 leading-none">
+              {endFrame ? `${endFrame.timestamp.toFixed(3)}s` : "--"}
+            </p>
+            {endFrame && (
+              <div className="absolute top-full right-0 mt-3 hidden group-hover:block z-50">
+                <div className="bg-popover border border-border shadow-xl rounded-md p-1 w-48">
+                  <img
+                    src={endFrame.url}
+                    alt="End frame"
+                    className="w-full h-auto rounded-sm"
+                  />
+                  <div className="text-[10px] text-center mt-1 text-muted-foreground">
+                    Frame at {endFrame.timestamp.toFixed(3)}s
                   </div>
-                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-popover border-t border-l border-border transform rotate-45"></div>
                 </div>
-              )}
-            </div>
 
-            <ArrowRight className="text-muted-foreground/30 w-4 h-4" />
+                <div className="absolute -top-1.5 right-6 w-3 h-3 bg-popover border-t border-l border-border transform rotate-45"></div>
+              </div>
+            )}
+          </div>
 
-            {/* End Time Block */}
-            <div className="text-center relative group cursor-help">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
-                End
-              </p>
-              <p className="text-lg font-mono font-medium text-orange-600 leading-none">
-                {endFrame ? `${endFrame.timestamp.toFixed(3)}s` : "--"}
-              </p>
-              {endFrame && (
-                <div className="absolute top-full right-0 mt-3 hidden group-hover:block z-50">
-                  <div className="bg-popover border border-border shadow-xl rounded-md p-1 w-48">
-                    <img
-                      src={endFrame.url}
-                      alt="End frame"
-                      className="w-full h-auto rounded-sm"
-                    />
-                    <div className="text-[10px] text-center mt-1 text-muted-foreground">
-                      Frame at {endFrame.timestamp.toFixed(3)}s
-                    </div>
-                  </div>
-                  <div className="absolute -top-1.5 right-6 w-3 h-3 bg-popover border-t border-l border-border transform rotate-45"></div>
-                </div>
-              )}
-            </div>
+          <div className="w-px h-8 bg-border/60 mx-1"></div>
 
-            <div className="w-px h-8 bg-border/60 mx-1"></div>
-
-            <div className="text-center min-w-[80px]">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5 flex items-center justify-center gap-1">
-                <Timer className="w-3 h-3" /> Result
-              </p>
-              <p
-                className={`text-xl font-mono font-bold leading-none ${netDuration !== "--" ? "text-green-600" : "text-muted-foreground"}`}
-              >
-                {netDuration}s
-              </p>
-            </div>
+          <div className="text-center min-w-[80px]">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5 flex items-center justify-center gap-1">
+              <Timer className="w-3 h-3" /> 结果
+            </p>
+            <p
+              className={`font-mono leading-none ${netDuration !== "--" ? "text-green-600" : "text-muted-foreground"}`}
+            >
+              {netDuration}s
+            </p>
           </div>
         </div>
       </div>
 
       {/* Frame Lists Area - Occupy remaining space */}
-      <div className="flex-1 p-2 gap-2 overflow-hidden flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Start Frames */}
-        <div className="flex-1 min-h-0 bg-background rounded-lg border border-border p-2 shadow-sm flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 p-1 flex flex-col ">
           <FrameStrip
-            title="Start Frame Selection"
+            title="开始帧选择"
             frames={startCandidates}
             selectedFrameId={effectiveStartId}
             onFrameDoubleClick={handleStartSelect}
@@ -298,9 +274,9 @@ export function VideoWorkspace({
         </div>
 
         {/* End Frames */}
-        <div className="flex-1 min-h-0 bg-background rounded-lg border border-border p-2 shadow-sm flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 p-1 flex flex-col ">
           <FrameStrip
-            title="End Frame Selection"
+            title="结束帧选择"
             frames={endCandidates}
             selectedFrameId={effectiveEndId}
             onFrameDoubleClick={handleEndSelect}

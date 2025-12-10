@@ -69,7 +69,7 @@ export function FrameSidebar({
   };
 
   return (
-    <div className="w-75 h-full bg-card flex flex-col">
+    <div className="w-75 h-full bg-card flex flex-col rounded-l-lg">
       {/* Task Management Section */}
       <div className="p-2 space-y-4">
         <div className="space-y-2">
@@ -241,12 +241,7 @@ export function FrameSidebar({
                     {(video.video_status === "completed" ||
                       video.video_status === "reviewed") && (
                       <span className="text-[10px] text-muted-foreground">
-                        {video.last_frame_time !== null &&
-                        video.first_frame_time !== null
-                          ? (
-                              video.last_frame_time - video.first_frame_time
-                            ).toFixed(2)
-                          : video.duration?.toFixed(2)}
+                        {video.duration_ms}
                         毫秒
                       </span>
                     )}

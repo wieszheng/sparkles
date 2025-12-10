@@ -122,36 +122,6 @@ interface Application {
   mainAbility?: string;
 }
 
-// interface Frame {
-//   id: number;
-//   frame_index: number;
-//   timestamp: number;
-//   url: string;
-// }
-
-// interface FrameMark {
-//   timestamp: number; // in seconds
-//   thumbnailUrl: string;
-// }
-//
-// interface VideoItem {
-//   id: string;
-//   name: string;
-//   url: string; // Blob URL
-//   fps: number; // 30 or 60
-//   duration: number; // video duration in seconds
-//   startFrame: FrameMark | null;
-//   endFrame: FrameMark | null;
-// }
-//
-// interface Task {
-//   id: string;
-//   name: string;
-//   createdAt: number;
-//   videos: VideoItem[];
-//   description?: string;
-// }
-
 type VideoStatus =
   | "uploading"
   | "processing"
@@ -179,7 +149,7 @@ interface TaskVideoSummary {
   id: string; // Relation ID (task_video id)
   video_id: string; // Actual Video ID
   order: number;
-  duration: number;
+  duration_ms: number;
   first_frame_time: number | null;
   last_frame_time: number | null;
   notes: string | null;
