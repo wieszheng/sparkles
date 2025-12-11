@@ -32,6 +32,9 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
   const [scrollPosition, setScrollPosition] = useState(0);
   const [scrollWidth, setScrollWidth] = useState(0);
   const [clientWidth, setClientWidth] = useState(0);
+  const [framePositions, setFramePositions] = useState<Map<string, number>>(
+    new Map(),
+  );
 
   // Ref map to track individual frame elements for auto-scrolling
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -62,7 +65,20 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
 
     updateScrollInfo();
     container.addEventListener("scroll", updateScrollInfo);
-    const resizeObserver = new ResizeObserver(updateScrollInfo);
+    const resizeObserver = new ResizeObserver(() => {
+      updateScrollInfo();
+      // Recalculate frame positions after resize
+      setTimeout(() => {
+        const positions = new Map<string, number>();
+        frames.forEach((frame) => {
+          const pos = getFramePosition(frame.id);
+          if (pos !== null) {
+            positions.set(frame.id, pos);
+          }
+        });
+        setFramePositions(positions);
+      }, 0);
+    });
     resizeObserver.observe(container);
 
     return () => {
@@ -70,6 +86,35 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
       resizeObserver.disconnect();
     };
   }, [frames]);
+
+  // Recalculate frame positions when frames or scrollWidth changes
+  useEffect(() => {
+    if (scrollWidth === 0) return;
+
+    const timer = setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const positions = new Map<string, number>();
+      frames.forEach((frame) => {
+        const frameNode = itemRefs.current.get(frame.id);
+        if (!frameNode || !container) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const frameRect = frameNode.getBoundingClientRect();
+
+        const relativeLeft =
+          frameRect.left - containerRect.left + container.scrollLeft;
+        const percentage = (relativeLeft / scrollWidth) * 100;
+        const validPercentage = Math.max(0, Math.min(100, percentage));
+
+        positions.set(frame.id, validPercentage);
+      });
+      setFramePositions(positions);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [frames, scrollWidth, scrollPosition]);
 
   // Auto-scroll to selected frame in main list when it changes
   useEffect(() => {
@@ -196,11 +241,19 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
     const container = scrollContainerRef.current;
     if (!frameNode || !container || scrollWidth === 0) return null;
 
-    // Get the frame's offset relative to the scroll container
-    const frameOffsetLeft = frameNode.offsetLeft;
+    // Use getBoundingClientRect for more accurate position calculation
+    const containerRect = container.getBoundingClientRect();
+    const frameRect = frameNode.getBoundingClientRect();
+
+    // Calculate relative position considering scroll position
+    const relativeLeft =
+      frameRect.left - containerRect.left + container.scrollLeft;
 
     // Calculate percentage position
-    return (frameOffsetLeft / scrollWidth) * 100;
+    const percentage = (relativeLeft / scrollWidth) * 100;
+
+    // Ensure percentage is within valid range
+    return Math.max(0, Math.min(100, percentage));
   };
 
   // Handle navigation bar click
@@ -237,11 +290,12 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
 
         {/* Container for buttons and list */}
         <div className="flex-1 min-h-0 flex items-center gap-2">
-          {/* Left Button */}
-          {frames.length > 0 && scrollPosition > 10 && (
+          {/* Left Button - Always visible */}
+          {frames.length > 0 && (
             <button
               onClick={() => scroll("left")}
-              className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group"
+              disabled={scrollPosition <= 10}
+              className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-background/90"
               title="向左滚动"
             >
               <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -357,24 +411,24 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
             </div>
           </div>
 
-          {/* Right Button */}
-          {frames.length > 0 &&
-            scrollPosition < scrollWidth - clientWidth - 10 && (
-              <button
-                onClick={() => scroll("right")}
-                className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group"
-                title="向右滚动"
-              >
-                <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              </button>
-            )}
+          {/* Right Button - Always visible */}
+          {frames.length > 0 && (
+            <button
+              onClick={() => scroll("right")}
+              disabled={scrollPosition >= scrollWidth - clientWidth - 10}
+              className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-background/90"
+              title="向右滚动"
+            >
+              <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Bar */}
         {frames.length > 0 && scrollWidth > clientWidth && (
           <div className="mt-2 flex items-center gap-2 shrink-0">
-            {/* Spacer for left button - only show when button is visible */}
-            {scrollPosition > 10 && <div className="shrink-0 w-10" />}
+            {/* Spacer for left button - always show since button is always visible */}
+            <div className="shrink-0 w-10" />
 
             {/* Navigation bar matching frame list width */}
             <div className="flex-1 relative">
@@ -402,8 +456,8 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                       : frame.is_last_candidate;
                   if (!isCandidate) return null;
 
-                  const position = getFramePosition(frame.id);
-                  if (position === null) return null;
+                  const position = framePositions.get(frame.id);
+                  if (position === undefined || position === null) return null;
 
                   return (
                     <div
@@ -423,8 +477,9 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                 {/* Selected frame marker */}
                 {selectedFrameId &&
                   (() => {
-                    const position = getFramePosition(selectedFrameId);
-                    if (position === null) return null;
+                    const position = framePositions.get(selectedFrameId);
+                    if (position === undefined || position === null)
+                      return null;
 
                     return (
                       <div
@@ -443,10 +498,8 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               </div>
             </div>
 
-            {/* Spacer for right button - only show when button is visible */}
-            {scrollPosition < scrollWidth - clientWidth - 10 && (
-              <div className="shrink-0 w-10" />
-            )}
+            {/* Spacer for right button - always show since button is always visible */}
+            <div className="shrink-0 w-10" />
           </div>
         )}
       </div>

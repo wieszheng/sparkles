@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { FrameStrip } from "./FrameStrip";
 import { Timer, ArrowRight, Loader2, FileVideo } from "lucide-react";
 
@@ -18,6 +16,62 @@ export function VideoWorkspace({
   videoSummary,
   onUpdateFrames,
 }: VideoWorkspaceProps) {
+  // Calculate frames before early returns (no hooks needed)
+  const allFrames = videoDetail?.frames || [];
+
+  // Resolve Effective Selected Frames (Echo Logic)
+  // 1. User's manual selection in this session (videoDetail.selected_..._id)
+  // 2. API data indicating a frame is already marked 'first'/'last' (Echo from DB)
+  // 3. Fallback to summary data if frames aren't loaded or fully synced
+  const resolveStartFrame = () => {
+    // 1. Manual selection
+    if (videoDetail?.selected_start_frame_id) {
+      return allFrames.find(
+        (f) => f.id === videoDetail.selected_start_frame_id,
+      );
+    }
+    // 2. Echo from API (frame_type='first') - 优先使用frame_type
+    const backendFirst = allFrames.find((f) => f.frame_type === "first");
+    if (backendFirst) return backendFirst;
+
+    // 3. Fallback to summary
+    if (
+      videoSummary?.first_frame_url &&
+      videoSummary.first_frame_time !== null
+    ) {
+      return {
+        id: "virtual-start",
+        url: videoSummary.first_frame_url,
+        timestamp: videoSummary.first_frame_time,
+        frame_type: "first" as FrameType,
+      };
+    }
+    return undefined;
+  };
+
+  const resolveEndFrame = () => {
+    if (videoDetail?.selected_end_frame_id) {
+      return allFrames.find((f) => f.id === videoDetail.selected_end_frame_id);
+    }
+    // Echo from API (frame_type='last') - 优先使用frame_type
+    const backendLast = allFrames.find((f) => f.frame_type === "last");
+    if (backendLast) return backendLast;
+
+    if (videoSummary?.last_frame_url && videoSummary.last_frame_time !== null) {
+      return {
+        id: "virtual-end",
+        url: videoSummary.last_frame_url,
+        timestamp: videoSummary.last_frame_time,
+        frame_type: "last" as FrameType,
+      };
+    }
+    return undefined;
+  };
+
+  const startFrame = resolveStartFrame();
+  const endFrame = resolveEndFrame();
+
+  // Early returns after hooks
   if (!videoDetail && !videoSummary) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
@@ -97,62 +151,10 @@ export function VideoWorkspace({
     );
   }
 
-  const allFrames = videoDetail?.frames || [];
-
   // Show all frames for candidates to allow re-selection, even if some are already marked.
-  // The 'echo' logic (highlighting the saved selection) is handled by startFrame/endFrame resolution below.
+  // The 'echo' logic (highlighting the saved selection) is handled by startFrame/endFrame resolution above.
   const startCandidates = allFrames;
   const endCandidates = allFrames;
-
-  // Resolve Effective Selected Frames (Echo Logic)
-  // 1. User's manual selection in this session (videoDetail.selected_..._id)
-  // 2. API data indicating a frame is already marked 'first'/'last' (Echo from DB)
-  // 3. Fallback to summary data if frames aren't loaded or fully synced
-
-  const startFrame = useMemo(() => {
-    // 1. Manual selection
-    if (videoDetail?.selected_start_frame_id) {
-      return allFrames.find(
-        (f) => f.id === videoDetail.selected_start_frame_id,
-      );
-    }
-    // 2. Echo from API (frame_type='first') - 优先使用frame_type
-    const backendFirst = allFrames.find((f) => f.frame_type === "first");
-    if (backendFirst) return backendFirst;
-
-    // 3. Fallback to summary
-    if (
-      videoSummary?.first_frame_url &&
-      videoSummary.first_frame_time !== null
-    ) {
-      return {
-        id: "virtual-start",
-        url: videoSummary.first_frame_url,
-        timestamp: videoSummary.first_frame_time,
-        frame_type: "first" as FrameType,
-      };
-    }
-    return undefined;
-  }, [videoDetail, allFrames, videoSummary]);
-
-  const endFrame = useMemo(() => {
-    if (videoDetail?.selected_end_frame_id) {
-      return allFrames.find((f) => f.id === videoDetail.selected_end_frame_id);
-    }
-    // Echo from API (frame_type='last') - 优先使用frame_type
-    const backendLast = allFrames.find((f) => f.frame_type === "last");
-    if (backendLast) return backendLast;
-
-    if (videoSummary?.last_frame_url && videoSummary.last_frame_time !== null) {
-      return {
-        id: "virtual-end",
-        url: videoSummary.last_frame_url,
-        timestamp: videoSummary.last_frame_time,
-        frame_type: "last" as FrameType,
-      };
-    }
-    return undefined;
-  }, [videoDetail, allFrames, videoSummary]);
 
   // Pass the resolved IDs to the strip so they are highlighted
   const effectiveStartId = startFrame?.id || null;
