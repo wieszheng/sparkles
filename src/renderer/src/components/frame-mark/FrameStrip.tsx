@@ -28,6 +28,10 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [previewFrame, setPreviewFrame] = useState<Frame | null>(null);
   const miniStripRef = useRef<HTMLDivElement>(null);
+  const navigationBarRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [scrollWidth, setScrollWidth] = useState(0);
+  const [clientWidth, setClientWidth] = useState(0);
 
   // Ref map to track individual frame elements for auto-scrolling
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -45,6 +49,28 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
     }
   }, [frames]);
 
+  // Update scroll position and dimensions
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const updateScrollInfo = () => {
+      setScrollPosition(container.scrollLeft);
+      setScrollWidth(container.scrollWidth);
+      setClientWidth(container.clientWidth);
+    };
+
+    updateScrollInfo();
+    container.addEventListener("scroll", updateScrollInfo);
+    const resizeObserver = new ResizeObserver(updateScrollInfo);
+    resizeObserver.observe(container);
+
+    return () => {
+      container.removeEventListener("scroll", updateScrollInfo);
+      resizeObserver.disconnect();
+    };
+  }, [frames]);
+
   // Auto-scroll to selected frame in main list when it changes
   useEffect(() => {
     if (selectedFrameId && scrollContainerRef.current) {
@@ -57,22 +83,55 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
         });
       }
     }
-  }, [selectedFrameId]);
+  }, [selectedFrameId, frames]);
 
-  // Auto-scroll mini-strip in preview
+  // Auto-scroll main list to preview frame when preview opens
   useEffect(() => {
-    if (previewFrame && miniStripRef.current) {
-      const selectedNode = miniStripRef.current.querySelector(
-        `[data-frame-id="${previewFrame.id}"]`,
-      );
-      if (selectedNode) {
+    if (!previewFrame || !scrollContainerRef.current) return;
+
+    const timer = setTimeout(() => {
+      const selectedNode = itemRefs.current.get(previewFrame.id);
+      if (selectedNode && scrollContainerRef.current) {
         selectedNode.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
           inline: "center",
         });
       }
-    }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [previewFrame]);
+
+  // Auto-scroll mini-strip in preview
+  useEffect(() => {
+    if (!previewFrame || !miniStripRef.current) return;
+
+    // Use setTimeout to ensure DOM is updated
+    const timer = setTimeout(() => {
+      const selectedNode = miniStripRef.current?.querySelector(
+        `[data-frame-id="${previewFrame.id}"]`,
+      );
+      if (selectedNode && miniStripRef.current) {
+        const container = miniStripRef.current;
+        const nodeRect = selectedNode.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        // Calculate scroll position to center the frame
+        const scrollLeft =
+          container.scrollLeft +
+          (nodeRect.left - containerRect.left) -
+          containerRect.width / 2 +
+          nodeRect.width / 2;
+
+        container.scrollTo({
+          left: scrollLeft,
+          behavior: "smooth",
+        });
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
   }, [previewFrame]);
 
   // Keyboard navigation for preview
@@ -131,6 +190,36 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
     }
   };
 
+  // Calculate frame position in navigation bar
+  const getFramePosition = (frameId: string): number | null => {
+    const frameNode = itemRefs.current.get(frameId);
+    const container = scrollContainerRef.current;
+    if (!frameNode || !container || scrollWidth === 0) return null;
+
+    // Get the frame's offset relative to the scroll container
+    const frameOffsetLeft = frameNode.offsetLeft;
+
+    // Calculate percentage position
+    return (frameOffsetLeft / scrollWidth) * 100;
+  };
+
+  // Handle navigation bar click
+  const handleNavigationClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current;
+    const navBar = navigationBarRef.current;
+    if (!container || !navBar) return;
+
+    const navRect = navBar.getBoundingClientRect();
+    const clickX = e.clientX - navRect.left;
+    const percentage = clickX / navRect.width;
+    const targetScroll = percentage * (scrollWidth - clientWidth);
+
+    container.scrollTo({
+      left: targetScroll,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <>
       <div className="flex flex-col h-full overflow-hidden">
@@ -147,22 +236,23 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
         </div>
 
         {/* Container for buttons and list */}
-        <div className="flex-1 min-h-0 flex items-stretch gap-2">
+        <div className="flex-1 min-h-0 flex items-center gap-2">
           {/* Left Button */}
-          <Button
-            variant="secondary"
-            className="h-full w-8 px-0 shrink-0 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
-            onClick={() => scroll("left")}
-            disabled={frames.length === 0}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
+          {frames.length > 0 && scrollPosition > 10 && (
+            <button
+              onClick={() => scroll("left")}
+              className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group"
+              title="向左滚动"
+            >
+              <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+          )}
 
           {/* Frame List Card */}
-          <div className="flex-1 relative overflow-hidden min-w-0">
+          <div className="flex-1 relative overflow-hidden min-w-0 h-full">
             <div
               ref={scrollContainerRef}
-              className="w-full h-full overflow-x-auto scrollbar-thin px-2 py-1 scroll-smooth flex gap-2 items-center"
+              className="w-full h-full overflow-x-auto px-2 py-1 scroll-smooth flex gap-2 items-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {frames.length === 0 ? (
                 <div className="w-full flex items-center justify-center text-xs text-muted-foreground italic h-full">
@@ -171,6 +261,14 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               ) : (
                 frames.map((frame) => {
                   const isSelected = selectedFrameId === frame.id;
+                  const isCandidate =
+                    color === "blue"
+                      ? frame.is_first_candidate
+                      : frame.is_last_candidate;
+                  const candidateRing =
+                    color === "blue"
+                      ? "ring-cyan-500/80 border-cyan-500 border-dashed"
+                      : "ring-amber-500/80 border-amber-500 border-dashed";
 
                   return (
                     <div
@@ -184,10 +282,12 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                       }`}
                     >
                       <div
-                        className={`relative overflow-hidden border shadow-sm bg-black/20 transition-all flex items-center justify-center rounded-sm h-full w-auto ${
+                        className={`relative overflow-hidden border-2 shadow-sm bg-black/20 transition-all flex items-center justify-center rounded-sm h-full w-auto ${
                           isSelected
                             ? `${borderColor} ring-2 ring-offset-0 ${color === "blue" ? "ring-blue-500/50" : "ring-orange-500/50"}`
-                            : "border-transparent hover:border-primary/30"
+                            : isCandidate
+                              ? `${candidateRing} ring-2 ring-offset-0`
+                              : "border-transparent hover:border-primary/30"
                         }`}
                       >
                         <img
@@ -220,6 +320,26 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                           {frame.timestamp.toFixed(2)}s
                         </div>
 
+                        {/* Candidate Indicator */}
+                        {isCandidate && (
+                          <div
+                            className={`absolute left-1 bottom-5 bg-white/95 text-[10px] font-medium px-1.5 py-0.5 rounded-sm shadow-sm z-20 flex items-center gap-1 ${
+                              color === "blue"
+                                ? "text-cyan-600"
+                                : "text-amber-600"
+                            }`}
+                          >
+                            <CheckCircle2
+                              className={`w-3 h-3 ${
+                                color === "blue"
+                                  ? "text-cyan-600"
+                                  : "text-amber-600"
+                              }`}
+                            />
+                            <span>候选</span>
+                          </div>
+                        )}
+
                         {/* Selected Indicator */}
                         {isSelected && (
                           <div className="absolute top-1 left-1 bg-white rounded-full shadow-sm z-20 p-0.5">
@@ -238,15 +358,97 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
           </div>
 
           {/* Right Button */}
-          <Button
-            variant="secondary"
-            className="h-full w-8 px-0 shrink-0 rounded-md text-muted-foreground hover:text-foreground disabled:opacity-30"
-            onClick={() => scroll("right")}
-            disabled={frames.length === 0}
-          >
-            <ChevronRight className="w-5 h-5" />
-          </Button>
+          {frames.length > 0 &&
+            scrollPosition < scrollWidth - clientWidth - 10 && (
+              <button
+                onClick={() => scroll("right")}
+                className="shrink-0 w-10 h-10 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-lg hover:bg-background hover:shadow-xl transition-all duration-200 flex items-center justify-center text-foreground/70 hover:text-foreground group"
+                title="向右滚动"
+              >
+                <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+            )}
         </div>
+
+        {/* Navigation Bar */}
+        {frames.length > 0 && scrollWidth > clientWidth && (
+          <div className="mt-2 flex items-center gap-2 shrink-0">
+            {/* Spacer for left button - only show when button is visible */}
+            {scrollPosition > 10 && <div className="shrink-0 w-10" />}
+
+            {/* Navigation bar matching frame list width */}
+            <div className="flex-1 relative">
+              <div
+                ref={navigationBarRef}
+                onClick={handleNavigationClick}
+                className="relative h-3 bg-secondary/50 rounded-full cursor-pointer overflow-hidden border border-border/50"
+              >
+                {/* Scroll indicator */}
+                {scrollWidth > clientWidth && (
+                  <div
+                    className="absolute top-0 h-full bg-primary/20 rounded-full transition-all duration-150"
+                    style={{
+                      left: `${(scrollPosition / (scrollWidth - clientWidth)) * 100}%`,
+                      width: `${(clientWidth / scrollWidth) * 100}%`,
+                    }}
+                  />
+                )}
+
+                {/* Candidate frame markers */}
+                {frames.map((frame) => {
+                  const isCandidate =
+                    color === "blue"
+                      ? frame.is_first_candidate
+                      : frame.is_last_candidate;
+                  if (!isCandidate) return null;
+
+                  const position = getFramePosition(frame.id);
+                  if (position === null) return null;
+
+                  return (
+                    <div
+                      key={`candidate-${frame.id}`}
+                      className="absolute top-0 w-0.5 h-full z-10"
+                      style={{
+                        left: `${position}%`,
+                        backgroundColor:
+                          color === "blue" ? "#06b6d4" : "#f59e0b",
+                        boxShadow: `0 0 2px ${color === "blue" ? "#06b6d4" : "#f59e0b"}`,
+                      }}
+                      title={`候选帧: ${frame.timestamp.toFixed(2)}s`}
+                    />
+                  );
+                })}
+
+                {/* Selected frame marker */}
+                {selectedFrameId &&
+                  (() => {
+                    const position = getFramePosition(selectedFrameId);
+                    if (position === null) return null;
+
+                    return (
+                      <div
+                        className="absolute top-0 w-1.5 h-full z-20 rounded-full shadow-md"
+                        style={{
+                          left: `${position}%`,
+                          backgroundColor:
+                            color === "blue" ? "#3b82f6" : "#f97316",
+                          transform: "translateX(-50%)",
+                          boxShadow: `0 0 4px ${color === "blue" ? "#3b82f6" : "#f97316"}`,
+                        }}
+                        title={`选中帧`}
+                      />
+                    );
+                  })()}
+              </div>
+            </div>
+
+            {/* Spacer for right button - only show when button is visible */}
+            {scrollPosition < scrollWidth - clientWidth - 10 && (
+              <div className="shrink-0 w-10" />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Transparent Lightbox Preview Modal */}
@@ -306,34 +508,53 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
                 ref={miniStripRef}
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
-                {frames.map((f) => (
-                  <div
-                    key={f.id}
-                    data-frame-id={f.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewFrame(f);
-                    }}
-                    className={`relative shrink-0 h-12 w-auto aspect-video rounded-sm overflow-hidden border ${
-                      f.id === previewFrame?.id
-                        ? "border-white ring-2 ring-white/20  opacity-100 z-10"
-                        : "border-transparent opacity-50 hover:opacity-100"
-                    }`}
-                  >
-                    <img
-                      src={f.url}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      alt={f.url}
-                    />
-                    {/* Small dot for selected frames context */}
-                    {selectedFrameId === f.id && (
-                      <div
-                        className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${color === "blue" ? "bg-blue-500" : "bg-orange-500"}`}
+                {frames.map((f) => {
+                  const isCandidate =
+                    color === "blue"
+                      ? f.is_first_candidate
+                      : f.is_last_candidate;
+                  return (
+                    <div
+                      key={f.id}
+                      data-frame-id={f.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewFrame(f);
+                      }}
+                      className={`relative shrink-0 h-12 w-auto aspect-video rounded-sm overflow-hidden border ${
+                        f.id === previewFrame?.id
+                          ? "border-white ring-2 ring-white/20  opacity-100 z-10"
+                          : isCandidate
+                            ? `${color === "blue" ? "border-cyan-500" : "border-amber-500"} border-dashed opacity-70 hover:opacity-100`
+                            : "border-transparent opacity-50 hover:opacity-100"
+                      }`}
+                    >
+                      <img
+                        src={f.url}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        alt={f.url}
                       />
-                    )}
-                  </div>
-                ))}
+                      {/* Small dot for selected frames context */}
+                      {selectedFrameId === f.id && (
+                        <div
+                          className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${color === "blue" ? "bg-blue-500" : "bg-orange-500"}`}
+                        />
+                      )}
+                      {/* Tiny badge for candidate frames */}
+                      {color === "blue" && f.is_first_candidate && (
+                        <div className="absolute bottom-0.5 left-0.5 px-1 py-[1px] rounded-sm text-[9px] font-semibold bg-white/90 text-cyan-600 shadow border border-dashed border-cyan-500">
+                          候选
+                        </div>
+                      )}
+                      {color === "orange" && f.is_last_candidate && (
+                        <div className="absolute bottom-0.5 left-0.5 px-1 py-[1px] rounded-sm text-[9px] font-semibold bg-white/90 text-amber-600 shadow border border-dashed border-amber-500">
+                          候选
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Controls Row */}

@@ -136,15 +136,15 @@ type TaskStatus = "draft" | "in_progress" | "completed" | "archived";
 type FrameType = "first" | "last" | "middle";
 
 interface Frame {
-  type: string;
   id: string;
   frame_number: number;
   timestamp: number;
   url: string;
   frame_type?: FrameType;
+  is_first_candidate: boolean;
+  is_last_candidate: boolean;
 }
 
-// Minimal video info returned in Task list/details
 interface TaskVideoSummary {
   id: string; // Relation ID (task_video id)
   video_id: string; // Actual Video ID
@@ -162,7 +162,6 @@ interface TaskVideoSummary {
   last_frame_url: string | null;
 }
 
-// Detailed Video info returned from /video/status/{id}
 interface VideoDetail {
   video_id: string;
   filename: string;
@@ -177,7 +176,7 @@ interface VideoDetail {
   current_step: string | null;
   frames: Frame[];
   created_at: string;
-  // Merged fields for UI convenience (from selection logic)
+
   selected_start_frame_id?: string | null;
   selected_end_frame_id?: string | null;
 }

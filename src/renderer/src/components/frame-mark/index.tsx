@@ -4,16 +4,16 @@ import { VideoWorkspace } from "@/components/frame-mark/VideoWorkspace";
 
 import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { Api } from "@/apis";
+import { toast } from "sonner";
 
 export function FrameMark() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
-  // activeTaskData is the detailed task object (with video list)
   const [activeTaskData, setActiveTaskData] = useState<Task | null>(null);
   const [isTaskLoading, setIsTaskLoading] = useState(false);
 
-  // activeVideoDetail is the full detail of the selected video (including frames)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [activeVideoDetail, setActiveVideoDetail] =
     useState<VideoDetail | null>(null);
@@ -27,9 +27,11 @@ export function FrameMark() {
 
   const loadTasks = async () => {
     try {
-      const data = await api.getTasks();
+      const data = await window.api.callApi(
+        "GET",
+        `${Api.TaskList}?skip=0&limit=100`,
+      );
       setTasks(data);
-      // Auto-select first task if available and none selected
       if (data.length > 0 && !activeTaskId) {
         setActiveTaskId(data[0].id);
       }
@@ -38,7 +40,6 @@ export function FrameMark() {
     }
   };
 
-  // Load Task Details when ID changes
   useEffect(() => {
     if (!activeTaskId) {
       setActiveTaskData(null);
@@ -47,9 +48,13 @@ export function FrameMark() {
 
     const fetchTaskDetail = async () => {
       setIsTaskLoading(true);
-      setActiveTaskData(null); // Clear previous data to avoid mismatch during load
+      setActiveTaskData(null);
       try {
-        const detail = await api.getTaskDetail(activeTaskId);
+        const detail = await window.api.callApi(
+          "GET",
+          `${Api.TaskDetail}/${activeTaskId}`,
+        );
+        console.log(detail);
         setActiveTaskData(detail);
       } catch (e) {
         console.error("Failed to load task detail", e);
@@ -61,7 +66,6 @@ export function FrameMark() {
     fetchTaskDetail();
   }, [activeTaskId]);
 
-  // Load Video Details when ID changes
   useEffect(() => {
     if (!activeVideoId) {
       setActiveVideoDetail(null);
@@ -70,7 +74,11 @@ export function FrameMark() {
 
     const fetchVideoDetail = async () => {
       try {
-        const detail = await api.getVideoStatus(activeVideoId);
+        const detail = await window.api.callApi(
+          "GET",
+          `${Api.TaskVideoFrames}/${activeTaskId}/videos/${activeVideoId}/frames`,
+        );
+        console.log(detail);
         setActiveVideoDetail(detail);
       } catch (e) {
         console.error("Failed to load video detail", e);
@@ -80,7 +88,6 @@ export function FrameMark() {
     fetchVideoDetail();
   }, [activeVideoId]);
 
-  // POLLING: Check status of processing videos in the current task or current active video
   useEffect(() => {
     const pollInterval = setInterval(async () => {
       // 1. Refresh active video if it's processing
@@ -179,21 +186,38 @@ export function FrameMark() {
       setActiveVideoDetail({
         ...activeVideoDetail,
         selected_start_frame_id:
-          startFrameId || activeVideoDetail.selected_start_frame_id,
+          startFrameId !== null
+            ? startFrameId
+            : activeVideoDetail.selected_start_frame_id,
         selected_end_frame_id:
-          endFrameId || activeVideoDetail.selected_end_frame_id,
+          endFrameId !== null
+            ? endFrameId
+            : activeVideoDetail.selected_end_frame_id,
       });
     }
 
-    // Call API if both are present (or just one if your API supports partial updates,
-    // but the spec says "submit review" usually implies completion.
-    // However, for better UX we might want to wait until both are selected or allow partials?
-    // The spec requires both first_frame_id and last_frame_id.
+    // Find existing frames from frame_type or selected_*_frame_id
+    const existingStartFrame = activeVideoDetail?.frames?.find(
+      (f) => f.frame_type === "first",
+    );
+    const existingEndFrame = activeVideoDetail?.frames?.find(
+      (f) => f.frame_type === "last",
+    );
 
     const targetStart =
-      startFrameId || activeVideoDetail?.selected_start_frame_id;
-    const targetEnd = endFrameId || activeVideoDetail?.selected_end_frame_id;
+      startFrameId !== null
+        ? startFrameId
+        : activeVideoDetail?.selected_start_frame_id ||
+          existingStartFrame?.id ||
+          null;
+    const targetEnd =
+      endFrameId !== null
+        ? endFrameId
+        : activeVideoDetail?.selected_end_frame_id ||
+          existingEndFrame?.id ||
+          null;
 
+    // Support updating only start frame or only end frame
     if (targetStart && targetEnd) {
       try {
         const res = await api.submitFrameMarking(videoId, {
@@ -202,12 +226,39 @@ export function FrameMark() {
           reviewer: "user",
         });
         console.log("Marking submitted", res);
+
+        // Show success toast
+        if (startFrameId !== null && endFrameId !== null) {
+          toast.success("首尾帧已更新");
+        } else if (startFrameId !== null) {
+          toast.success("首帧已更新");
+        } else if (endFrameId !== null) {
+          toast.success("尾帧已更新");
+        }
+
         if (activeTaskData) {
           const task = await api.getTaskDetail(activeTaskData.id);
           setActiveTaskData(task);
         }
       } catch (e) {
         console.error("Failed to submit marking", e);
+        const errorMessage =
+          e instanceof Error ? e.message : "更新失败，请重试";
+
+        if (startFrameId !== null && endFrameId !== null) {
+          toast.error(`首尾帧更新失败: ${errorMessage}`);
+        } else if (startFrameId !== null) {
+          toast.error(`首帧更新失败: ${errorMessage}`);
+        } else if (endFrameId !== null) {
+          toast.error(`尾帧更新失败: ${errorMessage}`);
+        }
+      }
+    } else {
+      // If only one frame is selected, show a warning
+      if (startFrameId !== null && !targetEnd) {
+        toast.warning("请先选择尾帧");
+      } else if (endFrameId !== null && !targetStart) {
+        toast.warning("请先选择首帧");
       }
     }
   };
@@ -232,7 +283,7 @@ export function FrameMark() {
       return [
         `"${v.video_filename}"`,
         v.video_status,
-        v.duration?.toFixed(2) || "",
+        v.duration_ms?.toFixed(2) || "",
         v.first_frame_time?.toFixed(3) || "",
         v.last_frame_time?.toFixed(3) || "",
         net,

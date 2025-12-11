@@ -39,7 +39,7 @@ export function VideoWorkspace({
   // Use summary for basic info if detail is loading
   const name =
     videoDetail?.filename || videoSummary?.video_filename || "Unknown";
-  const duration = videoDetail?.duration || videoSummary?.duration || 0;
+  const duration = videoDetail?.duration || videoSummary?.duration_ms || 0;
   const status = videoDetail?.status || videoSummary?.video_status;
 
   // Enhanced Loading UI
@@ -116,8 +116,8 @@ export function VideoWorkspace({
         (f) => f.id === videoDetail.selected_start_frame_id,
       );
     }
-    // 2. Echo from API (type='first')
-    const backendFirst = allFrames.find((f) => f.type === "first");
+    // 2. Echo from API (frame_type='first') - 优先使用frame_type
+    const backendFirst = allFrames.find((f) => f.frame_type === "first");
     if (backendFirst) return backendFirst;
 
     // 3. Fallback to summary
@@ -129,7 +129,7 @@ export function VideoWorkspace({
         id: "virtual-start",
         url: videoSummary.first_frame_url,
         timestamp: videoSummary.first_frame_time,
-        type: "first",
+        frame_type: "first" as FrameType,
       };
     }
     return undefined;
@@ -139,7 +139,8 @@ export function VideoWorkspace({
     if (videoDetail?.selected_end_frame_id) {
       return allFrames.find((f) => f.id === videoDetail.selected_end_frame_id);
     }
-    const backendLast = allFrames.find((f) => f.type === "last");
+    // Echo from API (frame_type='last') - 优先使用frame_type
+    const backendLast = allFrames.find((f) => f.frame_type === "last");
     if (backendLast) return backendLast;
 
     if (videoSummary?.last_frame_url && videoSummary.last_frame_time !== null) {
@@ -147,7 +148,7 @@ export function VideoWorkspace({
         id: "virtual-end",
         url: videoSummary.last_frame_url,
         timestamp: videoSummary.last_frame_time,
-        type: "last",
+        frame_type: "last" as FrameType,
       };
     }
     return undefined;
@@ -197,7 +198,7 @@ export function VideoWorkspace({
               开始
             </p>
             <p className="font-mono font-medium text-blue-600 leading-none">
-              {startFrame ? `${startFrame.timestamp.toFixed(3)}s` : "--"}
+              {startFrame ? `${startFrame.timestamp}ms` : "--"}
             </p>
             {startFrame && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 hidden group-hover:block z-50">
@@ -208,7 +209,7 @@ export function VideoWorkspace({
                     className="w-full h-auto rounded-sm"
                   />
                   <div className="text-[10px] text-center mt-1 text-muted-foreground">
-                    Frame at {startFrame.timestamp.toFixed(3)}s
+                    Frame at {startFrame.timestamp}ms
                   </div>
                 </div>
 
@@ -225,7 +226,7 @@ export function VideoWorkspace({
               结束
             </p>
             <p className="font-mono font-medium text-orange-600 leading-none">
-              {endFrame ? `${endFrame.timestamp.toFixed(3)}s` : "--"}
+              {endFrame ? `${endFrame.timestamp}ms` : "--"}
             </p>
             {endFrame && (
               <div className="absolute top-full right-0 mt-3 hidden group-hover:block z-50">
@@ -236,7 +237,7 @@ export function VideoWorkspace({
                     className="w-full h-auto rounded-sm"
                   />
                   <div className="text-[10px] text-center mt-1 text-muted-foreground">
-                    Frame at {endFrame.timestamp.toFixed(3)}s
+                    Frame at {endFrame.timestamp}ms
                   </div>
                 </div>
 

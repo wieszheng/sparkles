@@ -24,4 +24,9 @@ export const Api = {
   videoStatus: "/api/v1/sp/video/status",
   videoFrames: "/api/v1/sp/video/frames",
   updateVideoFrames: "/api/v1/sp/video/frames",
+
+  TaskCreate: "/api/v1/task",
+  TaskList: "/api/v1/task",
+  TaskDetail: "/api/v1/task",
+  TaskVideoFrames: "/api/v1/task",
 };

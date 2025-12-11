@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+const VideoStart = {
+  uploading: "数据上传中",
+  extracting: "提取所有帧中",
+  // analyzing :"AI分析中"
+  pending_review: "待人工审核",
+  reviewed: "已审核",
+  failed: "失败",
+};
 interface SidebarProps {
   tasks: Task[];
   activeTaskId: string | null;
@@ -209,10 +217,13 @@ export function FrameSidebar({
           ) : (
             activeTaskVideos.map((video) => (
               <div
-                key={video.video_id}
-                onClick={() => onSelectVideo(video.video_id)}
+                key={video.id}
+                onClick={() => {
+                  console.log("选中视频ID", video.id);
+                  onSelectVideo(video.id);
+                }}
                 className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all ${
-                  activeVideoId === video.video_id
+                  activeVideoId === video.id
                     ? "bg-accent border-primary/20 shadow-sm"
                     : "bg-card border-transparent hover:bg-muted/50"
                 }`}
@@ -228,7 +239,7 @@ export function FrameSidebar({
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-lg uppercase ${
                         video.video_status === "completed" ||
-                        video.video_status === "reviewed"
+                        video.video_status === "pending_review"
                           ? "bg-green-100 text-green-700"
                           : video.video_status === "processing" ||
                               video.video_status === "uploading"
@@ -236,10 +247,10 @@ export function FrameSidebar({
                             : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {video.video_status}
+                      {VideoStart[video.video_status]}
                     </span>
                     {(video.video_status === "completed" ||
-                      video.video_status === "reviewed") && (
+                      video.video_status === "pending_review") && (
                       <span className="text-[10px] text-muted-foreground">
                         {video.duration_ms}
                         毫秒

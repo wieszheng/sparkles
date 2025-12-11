@@ -27,7 +27,7 @@ import { startCaptureScreen, stopCaptureScreen } from "./hdc/uitest";
 import fs from "fs-extra";
 import path from "path";
 
-const BACKEND_HOST = "82.157.176.120";
+const BACKEND_HOST = "127.0.0.1";
 const BACKEND_PORT = 8000;
 
 export function initIpcHandlers(): void {
