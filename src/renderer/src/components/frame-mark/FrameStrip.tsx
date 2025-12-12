@@ -309,8 +309,9 @@ export const FrameStrip: React.FC<FrameStripProps> = ({
               className="w-full h-full overflow-x-auto px-2 py-1 scroll-smooth flex gap-2 items-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {frames.length === 0 ? (
-                <div className="w-full flex items-center justify-center text-xs text-muted-foreground italic h-full">
-                  No frames available
+                <div className="w-full h-full flex flex-col items-center justify-center text-xs sm:text-sm text-muted-foreground italic p-4">
+                  <Film className="w-6 h-6 sm:w-8 sm:h-8 opacity-30 mb-2" />
+                  <span>暂无可用的帧</span>
                 </div>
               ) : (
                 frames.map((frame) => {

@@ -81,11 +81,10 @@ export function FrameSidebar({
       {/* Task Management Section */}
       <div className="p-2 space-y-4">
         <div className="space-y-2">
-          <label className="text-sm">当前任务</label>
           <Select value={activeTaskId!} onValueChange={onSelectTask}>
             <SelectTrigger className="w-full mt-2">
               <SelectValue
-                placeholder={activeTask ? activeTask.name : "Select a task..."}
+                placeholder={activeTask ? activeTask.name : "选择任务"}
               />
             </SelectTrigger>
             <SelectContent>
@@ -98,7 +97,7 @@ export function FrameSidebar({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-6">
           <Button size="sm" onClick={() => setIsDialogOpen(true)}>
             <Plus className="w-4 h-4" />
             创建
@@ -121,33 +120,27 @@ export function FrameSidebar({
         <DialogContent className="max-w-[425px] bg-card">
           <DialogClose onClick={() => setIsDialogOpen(false)} />
           <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
+            <DialogTitle>新任务</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label
-                htmlFor="name"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Task Name
+          <form onSubmit={handleCreateSubmit}>
+            <div className="space-y-2 mb-5">
+              <label htmlFor="name" className="text-sm font-medium">
+                任务名称
               </label>
               <Input
                 id="name"
+                className="mt-1"
                 value={newTaskName}
                 onChange={(e) => setNewTaskName(e.target.value)}
-                placeholder="e.g. Batch analysis 01"
+                placeholder="输入任务名称"
                 autoFocus
               />
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Cancel
+              <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
+                取消
               </Button>
-              <Button type="submit">Create Task</Button>
+              <Button type="submit">确认</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -156,9 +149,7 @@ export function FrameSidebar({
       {/* Video List */}
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="p-2 pb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            视频列表
-          </h2>
+          <h2 className="text-sm font-medium">视频列表</h2>
           {activeTaskId && (
             <div>
               <Button
@@ -219,7 +210,6 @@ export function FrameSidebar({
               <div
                 key={video.id}
                 onClick={() => {
-                  console.log("选中视频ID", video.id);
                   onSelectVideo(video.id);
                 }}
                 className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all ${
@@ -232,13 +222,16 @@ export function FrameSidebar({
                   <FileVideo className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
+                  <p
+                    className="text-sm font-medium truncate"
+                    title={video.video_filename}
+                  >
                     {video.video_filename}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-lg uppercase ${
-                        video.video_status === "completed" ||
+                        video.video_status === "reviewed" ||
                         video.video_status === "pending_review"
                           ? "bg-green-100 text-green-700"
                           : video.video_status === "processing" ||
@@ -249,7 +242,7 @@ export function FrameSidebar({
                     >
                       {VideoStart[video.video_status]}
                     </span>
-                    {(video.video_status === "completed" ||
+                    {(video.video_status === "reviewed" ||
                       video.video_status === "pending_review") && (
                       <span className="text-[10px] text-muted-foreground">
                         {video.duration_ms}

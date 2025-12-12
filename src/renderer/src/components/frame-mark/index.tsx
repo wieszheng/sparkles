@@ -97,7 +97,10 @@ export function FrameMark() {
         ["uploading", "processing"].includes(activeVideoDetail.status)
       ) {
         try {
-          const updated = await api.getVideoStatus(activeVideoId);
+          const updated = await window.api.callApi(
+            "GET",
+            `${Api.TaskDetail}/${activeTaskId}`,
+          );
           setActiveVideoDetail(updated);
 
           // Also update the list view item if status changed
@@ -123,8 +126,10 @@ export function FrameMark() {
         )
       ) {
         try {
-          const detail = await api.getTaskDetail(activeTaskData.id);
-          // Only update status fields to avoid UI flickering/resetting
+          const detail = await window.api.callApi(
+            "GET",
+            `${Api.TaskDetail}/${activeTaskId}`,
+          );
           setActiveTaskData((prev) => {
             if (!prev) return detail;
             return detail;
@@ -177,7 +182,6 @@ export function FrameMark() {
   };
 
   const handleUpdateVideoFrame = async (
-    videoId: string,
     startFrameId: string | null,
     endFrameId: string | null,
   ) => {
@@ -220,11 +224,14 @@ export function FrameMark() {
     // Support updating only start frame or only end frame
     if (targetStart && targetEnd) {
       try {
-        const res = await api.submitFrameMarking(videoId, {
-          first_frame_id: targetStart,
-          last_frame_id: targetEnd,
-          reviewer: "user",
-        });
+        const res = await window.api.callApi(
+          "PUT",
+          `${Api.TaskVideoFrames}/${activeTaskId}/videos/${activeVideoId}/marking`,
+          {
+            first_frame_id: targetStart,
+            last_frame_id: targetEnd,
+          },
+        );
         console.log("Marking submitted", res);
 
         // Show success toast
@@ -324,15 +331,12 @@ export function FrameMark() {
           <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
             <div className="bg-background p-4 rounded-lg shadow-lg flex items-center gap-3">
               <Loader2 className="animate-spin" />
-              <span>Uploading...</span>
+              <span>上传中...</span>
             </div>
           </div>
         )}
         <VideoWorkspace
           videoDetail={activeVideoDetail}
-          videoSummary={activeTaskData?.videos.find(
-            (v) => v.video_id === activeVideoId,
-          )}
           onUpdateFrames={handleUpdateVideoFrame}
         />
       </div>

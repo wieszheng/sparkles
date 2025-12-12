@@ -3,9 +3,7 @@ import { Timer, ArrowRight, Loader2, FileVideo } from "lucide-react";
 
 interface VideoWorkspaceProps {
   videoDetail: VideoDetail | null;
-  videoSummary?: TaskVideoSummary;
   onUpdateFrames: (
-    videoId: string,
     startFrameId: string | null,
     endFrameId: string | null,
   ) => void;
@@ -13,16 +11,11 @@ interface VideoWorkspaceProps {
 
 export function VideoWorkspace({
   videoDetail,
-  videoSummary,
   onUpdateFrames,
 }: VideoWorkspaceProps) {
-  // Calculate frames before early returns (no hooks needed)
+  console.log("videoDetail", videoDetail);
   const allFrames = videoDetail?.frames || [];
 
-  // Resolve Effective Selected Frames (Echo Logic)
-  // 1. User's manual selection in this session (videoDetail.selected_..._id)
-  // 2. API data indicating a frame is already marked 'first'/'last' (Echo from DB)
-  // 3. Fallback to summary data if frames aren't loaded or fully synced
   const resolveStartFrame = () => {
     // 1. Manual selection
     if (videoDetail?.selected_start_frame_id) {
@@ -34,18 +27,6 @@ export function VideoWorkspace({
     const backendFirst = allFrames.find((f) => f.frame_type === "first");
     if (backendFirst) return backendFirst;
 
-    // 3. Fallback to summary
-    if (
-      videoSummary?.first_frame_url &&
-      videoSummary.first_frame_time !== null
-    ) {
-      return {
-        id: "virtual-start",
-        url: videoSummary.first_frame_url,
-        timestamp: videoSummary.first_frame_time,
-        frame_type: "first" as FrameType,
-      };
-    }
     return undefined;
   };
 
@@ -57,14 +38,6 @@ export function VideoWorkspace({
     const backendLast = allFrames.find((f) => f.frame_type === "last");
     if (backendLast) return backendLast;
 
-    if (videoSummary?.last_frame_url && videoSummary.last_frame_time !== null) {
-      return {
-        id: "virtual-end",
-        url: videoSummary.last_frame_url,
-        timestamp: videoSummary.last_frame_time,
-        frame_type: "last" as FrameType,
-      };
-    }
     return undefined;
   };
 
@@ -72,16 +45,18 @@ export function VideoWorkspace({
   const endFrame = resolveEndFrame();
 
   // Early returns after hooks
-  if (!videoDetail && !videoSummary) {
+  if (!videoDetail) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-            <FileVideo className="w-8 h-8 opacity-50" />
+      <div className="flex-1 flex items-center justify-center text-muted-foreground p-8 h-full">
+        <div className="text-center space-y-4 max-w-sm w-full flex flex-col items-center justify-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
+            <FileVideo className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" />
           </div>
           <div>
-            <h3 className="text-lg font-medium text-foreground">未选择视频</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h3 className="text-lg sm:text-xl font-medium text-foreground">
+              未选择视频
+            </h3>
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
               从侧边栏中选择一段视频，开始分析帧延迟情况。
             </p>
           </div>
@@ -91,50 +66,22 @@ export function VideoWorkspace({
   }
 
   // Use summary for basic info if detail is loading
-  const name =
-    videoDetail?.filename || videoSummary?.video_filename || "Unknown";
-  const duration = videoDetail?.duration || videoSummary?.duration_ms || 0;
-  const status = videoDetail?.status || videoSummary?.video_status;
-
-  // Enhanced Loading UI
-  if (status === "processing" || status === "uploading") {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <div className="max-w-md w-full rounded-xl p-8 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in-95">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full"></div>
-            <div className="relative bg-primary/10 p-5 rounded-full ring-1 ring-primary/20">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold tracking-tight">
-              {status === "uploading" ? "Uploading Video" : "Processing Video"}
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {status === "uploading"
-                ? "Uploading your video file to the server. Large files may take a moment."
-                : "Analyzing frames, calculating timestamps, and preparing previews."}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const name = videoDetail?.filename || "Unknown";
+  const duration = videoDetail?.duration || 0;
+  const status = videoDetail?.status;
 
   if (status === "failed") {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="max-w-md text-center space-y-4">
-          <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto text-destructive">
-            <FileVideo className="w-6 h-6" />
+      <div className="flex-1 flex items-center justify-center p-8 h-full">
+        <div className="max-w-md text-center space-y-4 w-full flex flex-col items-center">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto text-destructive">
+            <FileVideo className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
-          <p className="font-medium text-destructive">
-            Error processing video file
+          <p className="font-medium text-destructive text-lg sm:text-xl">
+            视频处理失败
           </p>
           {videoDetail?.error_message && (
-            <div className="text-sm bg-destructive/5 text-destructive/80 p-3 rounded border border-destructive/20 font-mono">
+            <div className="text-sm bg-destructive/5 text-destructive/80 p-3 rounded border border-destructive/20 font-mono w-full max-w-md">
               {videoDetail.error_message}
             </div>
           )}
@@ -145,8 +92,13 @@ export function VideoWorkspace({
 
   if (!videoDetail && (status === "completed" || status === "reviewed")) {
     return (
-      <div className="flex-1 bg-background flex items-center justify-center text-muted-foreground">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="flex-1 bg-background flex items-center justify-center text-muted-foreground h-full">
+        <div className="text-center flex flex-col items-center space-y-4">
+          <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 animate-spin" />
+          <p className="text-sm sm:text-base text-muted-foreground">
+            正在加载视频详情...
+          </p>
+        </div>
       </div>
     );
   }
@@ -161,19 +113,17 @@ export function VideoWorkspace({
   const effectiveEndId = endFrame?.id || null;
 
   const netDuration =
-    startFrame && endFrame
-      ? (endFrame.timestamp - startFrame.timestamp).toFixed(3)
-      : "--";
+    startFrame && endFrame ? endFrame.timestamp - startFrame.timestamp : "--";
 
   const handleStartSelect = (frame: Frame) => {
     if (videoDetail) {
-      onUpdateFrames(videoDetail.video_id, frame.id, null);
+      onUpdateFrames(frame.id, null);
     }
   };
 
   const handleEndSelect = (frame: Frame) => {
     if (videoDetail) {
-      onUpdateFrames(videoDetail.video_id, null, frame.id);
+      onUpdateFrames(null, frame.id);
     }
   };
 
@@ -257,7 +207,7 @@ export function VideoWorkspace({
             <p
               className={`font-mono leading-none ${netDuration !== "--" ? "text-green-600" : "text-muted-foreground"}`}
             >
-              {netDuration}s
+              {netDuration}ms
             </p>
           </div>
         </div>
