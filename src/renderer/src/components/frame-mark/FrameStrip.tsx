@@ -174,7 +174,7 @@ export function FrameStrip({
     return frames.length * itemFullWidth + GAP;
   }, [frames.length, itemWidth, itemFullWidth, GAP]);
 
-  // 滚动到指定索引
+  // 滚动到指定索引（立即定位，避免触发中间帧加载）
   const scrollToIndex = (
     index: number,
     align: "center" | "start" = "center",
@@ -193,9 +193,27 @@ export function FrameStrip({
       finalScrollLeft = targetScrollLeft;
     }
 
-    container.scrollTo({
-      left: Math.max(0, finalScrollLeft),
-      behavior: "smooth",
+    // 立即定位到目标位置（不使用平滑滚动，避免触发中间帧的加载）
+    const scrollPosition = Math.max(0, finalScrollLeft);
+    container.scrollLeft = scrollPosition;
+    
+    // 立即更新状态，确保可见范围立即更新
+    setScrollLeft(scrollPosition);
+    
+    // 立即计算并更新可见范围，只渲染目标位置附近的帧
+    const containerWidth = containerRect.width;
+    const startIndex = Math.max(
+      0,
+      Math.floor((scrollPosition - GAP) / itemFullWidth),
+    );
+    const endIndex = Math.min(
+      frames.length - 1,
+      Math.ceil((scrollPosition + containerWidth + GAP) / itemFullWidth),
+    );
+    const buffer = 3;
+    setVisibleRange({
+      start: Math.max(0, startIndex - buffer),
+      end: Math.min(frames.length - 1, endIndex + buffer),
     });
   };
 
