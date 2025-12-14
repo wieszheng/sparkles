@@ -25,6 +25,7 @@ import {
 import { startCaptureScreen, stopCaptureScreen } from "./hdc/uitest";
 
 import fs from "fs-extra";
+import { File, FormData } from "formdata-node";
 import path from "path";
 
 const BACKEND_HOST = "127.0.0.1";
@@ -352,7 +353,6 @@ export function initIpcHandlers(): void {
       const {
         endpoint,
         filePath,
-        fieldName = "file",
         additionalFields = {},
         headers = {},
       } = options;
@@ -363,25 +363,44 @@ export function initIpcHandlers(): void {
       );
       const form = new FormData();
 
-      // 添加文件
-      const fileStream = fs.createReadStream(filePath);
-      form.append(fieldName, fileStream, path.basename(filePath));
+      // 添加文件 - 使用 readFile 读取文件内容为 Buffer
+      for (let index = 0; index < filePath.length; index++) {
+        const file = filePath[index];
+        console.log("[IPC FilePath:]", file);
+
+        // 检查文件是否存在
+        if (!(await fs.pathExists(file))) {
+          console.error(`文件不存在: ${file}`);
+          throw new Error(`文件不存在: ${file}`);
+        }
+
+        // 读取文件内容为 Buffer
+        const fileBuffer = await fs.readFile(file);
+        const filename = path.basename(file) || `file${index}`;
+
+        // 使用 Buffer 创建 File 对象
+        form.append("files", new File([fileBuffer], filename), filename);
+      }
 
       // 添加其他字段
       for (const [key, value] of Object.entries(additionalFields)) {
         form.append(key, String(value));
       }
 
+      // formdata-node 的 FormData 可以直接传递给 fetch，但需要类型断言
+      // FormData 会自动设置正确的 Content-Type 和 boundary
       const response = await fetch(url, {
         method: "POST",
-        body: form,
-        headers,
+        body: form as any,
+        headers, // 不设置 Content-Type，让 FormData 自动处理
       });
 
       return await response.json();
     } catch (error) {
+      console.error("[IPC call-api-upload Error]", error);
       return {
-        error: error,
+        success: false,
+        error: error instanceof Error ? error.message : "上传失败",
       };
     }
   });

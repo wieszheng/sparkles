@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { FrameSidebar } from "@/components/frame-mark/FrameSidebar";
 import { VideoWorkspace } from "@/components/frame-mark/VideoWorkspace";
 
-import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { Api } from "@/apis";
 import { toast } from "sonner";
@@ -76,9 +75,8 @@ export function FrameMark() {
       try {
         const detail = await window.api.callApi(
           "GET",
-          `${Api.TaskVideoFrames}/${activeTaskId}/videos/${activeVideoId}/frames`,
+          `${Api.getVideoStatus}/${activeVideoId}`,
         );
-        console.log(detail);
         setActiveVideoDetail(detail);
       } catch (e) {
         console.error("Failed to load video detail", e);
@@ -90,11 +88,10 @@ export function FrameMark() {
 
   useEffect(() => {
     const pollInterval = setInterval(async () => {
-      // 1. Refresh active video if it's processing
       if (
         activeVideoId &&
         activeVideoDetail &&
-        ["uploading", "processing"].includes(activeVideoDetail.status)
+        ["uploading", "extracting"].includes(activeVideoDetail.status)
       ) {
         try {
           const updated = await window.api.callApi(
@@ -122,7 +119,7 @@ export function FrameMark() {
       if (
         activeTaskData &&
         activeTaskData.videos.some((v) =>
-          ["uploading", "processing"].includes(v.video_status),
+          ["uploading", "extracting"].includes(v.video_status),
         )
       ) {
         try {
@@ -138,7 +135,7 @@ export function FrameMark() {
           console.log(e);
         }
       }
-    }, 8000);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [activeVideoId, activeVideoDetail, activeTaskData]);
@@ -147,32 +144,43 @@ export function FrameMark() {
 
   const handleCreateTask = async (name: string) => {
     try {
-      const newTask = await api.createTask({ name, created_by: "user" });
+      const newTask = await window.api.callApi("POST", Api.TaskCreate, {
+        name,
+        created_by: "Sparkles",
+      });
       setTasks((prev) => [newTask, ...prev]);
       setActiveTaskId(newTask.id);
       setActiveVideoId(null);
+      toast.success("恭喜你，创建成功。");
     } catch (e) {
       console.log(e);
     }
   };
 
-  const handleUploadVideo = async (file: File) => {
+  const handleUploadVideo = async (filePaths: string[]) => {
     if (!activeTaskId) return;
     setIsLoading(true);
 
     try {
       // 1. Upload Video
-      const { video_id } = await api.uploadVideo(file);
-
-      // 2. Add to Task
-      await api.addVideosToTask(activeTaskId, [video_id]);
+      const res = await window.api.uploadFile({
+        endpoint: "/api/v1/video/batch-upload",
+        filePath: filePaths,
+        additionalFields: {
+          task_id: activeTaskId!,
+        },
+      });
 
       // 3. Refresh Task Data
-      const updatedTask = await api.getTaskDetail(activeTaskId);
+      const updatedTask = await window.api.callApi(
+        "GET",
+        `${Api.TaskDetail}/${activeTaskId}`,
+      );
       setActiveTaskData(updatedTask);
 
       // 4. Select the new video
-      setActiveVideoId(video_id);
+      // setActiveVideoId(video_id);
+      toast.success(res.message);
     } catch (e) {
       console.error(e);
       alert("Failed to upload video");
@@ -235,30 +243,20 @@ export function FrameMark() {
         console.log("Marking submitted", res);
 
         // Show success toast
-        if (startFrameId !== null && endFrameId !== null) {
-          toast.success("首尾帧已更新");
-        } else if (startFrameId !== null) {
-          toast.success("首帧已更新");
-        } else if (endFrameId !== null) {
-          toast.success("尾帧已更新");
+        if (res) {
+          toast.success("已更新");
         }
 
         if (activeTaskData) {
-          const task = await api.getTaskDetail(activeTaskData.id);
+          const task = await window.api.callApi(
+            "GET",
+            `${Api.TaskDetail}/${activeTaskData.id}`,
+          );
           setActiveTaskData(task);
         }
       } catch (e) {
         console.error("Failed to submit marking", e);
-        const errorMessage =
-          e instanceof Error ? e.message : "更新失败，请重试";
-
-        if (startFrameId !== null && endFrameId !== null) {
-          toast.error(`首尾帧更新失败: ${errorMessage}`);
-        } else if (startFrameId !== null) {
-          toast.error(`首帧更新失败: ${errorMessage}`);
-        } else if (endFrameId !== null) {
-          toast.error(`尾帧更新失败: ${errorMessage}`);
-        }
+        toast.error(`首尾帧更新失败: ${e}`);
       }
     } else {
       // If only one frame is selected, show a warning
@@ -328,7 +326,7 @@ export function FrameMark() {
 
       <div className="flex-1 h-full overflow-hidden relative">
         {isLoading && (
-          <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
+          <div className="absolute inset-0 z-50 backdrop-blur-[1px] flex items-center justify-center">
             <div className="bg-background p-4 rounded-lg shadow-lg flex items-center gap-3">
               <Loader2 className="animate-spin" />
               <span>上传中...</span>

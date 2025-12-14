@@ -37,8 +37,7 @@ interface RequestOptions {
 
 interface UploadFileOptions {
   endpoint: string;
-  filePath: string;
-  fieldName?: string;
+  filePath: string[];
   additionalFields?: Record<string, string | number>;
   headers?: Record<string, string>;
 }
@@ -187,6 +186,7 @@ interface Task {
   description: string | null;
   status: TaskStatus;
   total_videos: number;
+  pending_videos: number;
   completed_videos: number;
   failed_videos: number;
   total_duration: number | null;

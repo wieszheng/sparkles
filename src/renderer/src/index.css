@@ -319,6 +319,16 @@
     background-color: hsl(var(--muted-foreground) / 0.5);
   }
 
+  /* 隐藏滚动条 */
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
 }
 
   @keyframes scan-up {
