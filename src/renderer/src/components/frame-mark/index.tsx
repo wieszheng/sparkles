@@ -311,7 +311,7 @@ export function FrameMark() {
         tasks={tasks}
         activeTaskId={activeTaskId}
         activeVideoId={activeVideoId}
-        activeTaskVideos={activeTaskData?.videos || []}
+        activeTaskData={activeTaskData}
         onCreateTask={handleCreateTask}
         onSelectTask={(id) => {
           setActiveTaskId(id);

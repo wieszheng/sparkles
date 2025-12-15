@@ -185,14 +185,17 @@ interface Task {
   name: string;
   description: string | null;
   status: TaskStatus;
-  total_videos: number;
-  pending_videos: number;
-  completed_videos: number;
-  failed_videos: number;
-  total_duration: number | null;
-  avg_duration: number | null;
-  min_duration: number | null;
-  max_duration: number | null;
+  statistics: {
+    total_videos: number;
+    pending_videos: number;
+    completed_videos: number;
+    failed_videos: number;
+    total_duration: number | null;
+    avg_duration: number | null;
+    min_duration: number | null;
+    max_duration: number | null;
+  };
+
   created_by: string;
   created_at: string;
   updated_at: string;

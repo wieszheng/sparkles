@@ -29,7 +29,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-
 const VideoStart = {
   uploading: "数据上传中",
   extracting: "提取分析中",
@@ -43,7 +42,7 @@ interface SidebarProps {
   tasks: Task[];
   activeTaskId: string | null;
   activeVideoId: string | null;
-  activeTaskVideos: TaskVideoSummary[];
+  activeTaskData: Task | null;
   onSelectTask: (taskId: string) => void;
   onCreateTask: (name: string) => void;
   onUploadVideo: (filePaths: string[]) => void;
@@ -57,7 +56,7 @@ export function FrameSidebar({
   tasks,
   activeTaskId,
   activeVideoId,
-  activeTaskVideos,
+  activeTaskData,
   onSelectTask,
   onCreateTask,
   onUploadVideo,
@@ -68,8 +67,6 @@ export function FrameSidebar({
 }: SidebarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
-
-  const activeTask = tasks.find((t) => t.id === activeTaskId);
 
   const handleCreateSubmit = () => {
     if (newTaskName.trim()) {
@@ -84,12 +81,20 @@ export function FrameSidebar({
       title: "选中视频",
       filters: [
         {
-          name: "视频",
-          extensions: ["mp4"],
+          name: "视频文件",
+          extensions: ["mp4", "mov", "avi", "mkv"],
+        },
+        {
+          name: "所有文件",
+          extensions: ["*"],
         },
       ],
-      properties: ["multiSelections"],
+      properties: ["openFile", "multiSelections"],
+      // properties: ["multiSelections"],
     });
+    if (directors.canceled) {
+      return;
+    }
     onUploadVideo(directors.filePaths);
   };
 
@@ -101,7 +106,7 @@ export function FrameSidebar({
           <Select value={activeTaskId!} onValueChange={onSelectTask}>
             <SelectTrigger className="w-full mt-2">
               <SelectValue
-                placeholder={activeTask ? activeTask.name : "选择任务"}
+                placeholder={activeTaskData ? activeTaskData.name : "选择任务"}
               />
             </SelectTrigger>
             <SelectContent>
@@ -198,7 +203,7 @@ export function FrameSidebar({
               </div>
             ) : isLoadingVideos ? (
               <div className="p-2 space-y-2">
-                {[1,2,3,4,5,6].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div
                     key={i}
                     className="flex items-center gap-3 p-2 rounded-lg border border-transparent bg-muted/30"
@@ -211,7 +216,7 @@ export function FrameSidebar({
                   </div>
                 ))}
               </div>
-            ) : activeTaskVideos.length === 0 ? (
+            ) : activeTaskData?.videos.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-muted-foreground p-4 text-center border-2 border-dashed border-border rounded-lg m-2">
                 <Upload className="w-8 h-8 mb-2 opacity-30" />
                 <span className="text-xs font-bold">
@@ -221,7 +226,7 @@ export function FrameSidebar({
                 </span>
               </div>
             ) : (
-              activeTaskVideos.map((video) => (
+              activeTaskData?.videos.map((video) => (
                 <div
                   key={video.video_id}
                   onClick={() => {
@@ -274,14 +279,14 @@ export function FrameSidebar({
       </div>
 
       {/* Task Status Section */}
-      {activeTaskId && activeTask && (
+      {activeTaskData && (
         <div className="p-2 space-y-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               任务状态
             </h3>
             <div className="flex items-center gap-2">
-              {activeTask.total_videos > 0 && (
+              {activeTaskData.statistics.total_videos > 0 && (
                 <div className="flex items-center gap-1 min-w-[160px]">
                   <span className="text-[10px] text-muted-foreground">
                     进度
@@ -290,33 +295,34 @@ export function FrameSidebar({
                     <div
                       className="h-full bg-green-500 transition-all duration-300"
                       style={{
-                        width: `${(activeTask.completed_videos / activeTask.total_videos) * 100}%`,
+                        width: `${(activeTaskData.statistics.completed_videos / activeTaskData.statistics.total_videos) * 100}%`,
                       }}
                     />
                   </div>
                   <span className="text-[10px] text-muted-foreground font-medium">
                     {Math.round(
-                      (activeTask.completed_videos / activeTask.total_videos) *
+                      (activeTaskData.statistics.completed_videos /
+                        activeTaskData.statistics.total_videos) *
                         100,
                     )}
-                    % （{activeTask.completed_videos}/{activeTask.total_videos}
-                    ）
+                    % （{activeTaskData.statistics.completed_videos}/
+                    {activeTaskData.statistics.total_videos}）
                   </span>
                 </div>
               )}
-              {activeTask.status && (
+              {activeTaskData.status && (
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    activeTask.status === "completed"
+                    activeTaskData.status === "completed"
                       ? "bg-green-100 text-green-700"
-                      : activeTask.status === "in_progress"
+                      : activeTaskData.status === "in_progress"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {activeTask.status === "completed"
+                  {activeTaskData.status === "completed"
                     ? "已完成"
-                    : activeTask.status === "in_progress"
+                    : activeTaskData.status === "in_progress"
                       ? "进行中"
                       : "草稿"}
                 </span>
@@ -333,7 +339,7 @@ export function FrameSidebar({
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground">总数</div>
                 <div className="text-sm font-semibold">
-                  {activeTask.total_videos}
+                  {activeTaskData.statistics.total_videos}
                 </div>
               </div>
             </div>
@@ -346,7 +352,7 @@ export function FrameSidebar({
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground">已审核</div>
                 <div className="text-sm font-semibold text-green-600">
-                  {activeTask.completed_videos}
+                  {activeTaskData.statistics.completed_videos}
                 </div>
               </div>
             </div>
@@ -359,7 +365,7 @@ export function FrameSidebar({
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground">待审核</div>
                 <div className="text-sm font-semibold text-amber-600">
-                  {activeTask.pending_videos}
+                  {activeTaskData.statistics.pending_videos}
                 </div>
               </div>
             </div>
@@ -386,7 +392,7 @@ export function FrameSidebar({
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-muted-foreground">失败</div>
                 <div className="text-sm font-semibold text-red-600">
-                  {activeTask.failed_videos}
+                  {activeTaskData.statistics.failed_videos}
                 </div>
               </div>
             </div>
