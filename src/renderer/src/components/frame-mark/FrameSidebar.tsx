@@ -232,7 +232,7 @@ export function FrameSidebar({
                   onClick={() => {
                     onSelectVideo(video.video_id);
                   }}
-                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all w-71 ${
+                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-all w-70 ${
                     activeVideoId === video.video_id
                       ? "bg-accent border-primary/20 shadow-sm"
                       : "bg-card border-transparent hover:bg-muted/50"
@@ -330,14 +330,14 @@ export function FrameSidebar({
             </div>
           </div>
 
-          <div className="flex-1 flex gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {/* 总视频数 */}
             <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
               <div className="p-1.5 rounded bg-primary/10">
                 <FileVideo className="w-3 h-3 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground">总数</div>
+                {/*<div className="text-xs text-muted-foreground">总数</div>*/}
                 <div className="text-sm font-semibold">
                   {activeTaskData.statistics.total_videos}
                 </div>
@@ -350,7 +350,7 @@ export function FrameSidebar({
                 <CheckCircle2 className="w-3 h-3 text-green-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground">已审核</div>
+                {/*<div className="text-xs text-muted-foreground">已审核</div>*/}
                 <div className="text-sm font-semibold text-green-600">
                   {activeTaskData.statistics.completed_videos}
                 </div>
@@ -363,26 +363,24 @@ export function FrameSidebar({
                 <Clock className="w-3 h-3 text-amber-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground">待审核</div>
+                {/*<div className="text-xs text-muted-foreground">待审核</div>*/}
                 <div className="text-sm font-semibold text-amber-600">
                   {activeTaskData.statistics.pending_videos}
                 </div>
               </div>
             </div>
             {/* 处理中 */}
-            {/*{(taskStats.processing > 0 || taskStats.uploading > 0) && (*/}
-            {/*  <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">*/}
-            {/*    <div className="p-1.5 rounded bg-blue-500/10">*/}
-            {/*      <Activity className="w-3 h-3 text-blue-600 animate-pulse" />*/}
-            {/*    </div>*/}
-            {/*    <div className="flex-1 min-w-0">*/}
-            {/*      <div className="text-xs text-muted-foreground">处理中</div>*/}
-            {/*      <div className="text-sm font-semibold text-blue-600">*/}
-            {/*        {taskStats.processing + taskStats.uploading}*/}
-            {/*      </div>*/}
+            {/*<div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">*/}
+            {/*  <div className="p-1.5 rounded bg-blue-500/10">*/}
+            {/*    <Activity className="w-3 h-3 text-blue-600 animate-pulse" />*/}
+            {/*  </div>*/}
+            {/*  <div className="flex-1 min-w-0">*/}
+            {/*    /!*<div className="text-xs text-muted-foreground">处理中</div>*!/*/}
+            {/*    <div className="text-sm font-semibold text-blue-600">*/}
+            {/*      {activeTaskData.statistics.uploading}*/}
             {/*    </div>*/}
             {/*  </div>*/}
-            {/*)}*/}
+            {/*</div>*/}
 
             {/* 失败 */}
             <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
@@ -390,7 +388,7 @@ export function FrameSidebar({
                 <XCircle className="w-3 h-3 text-red-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-muted-foreground">失败</div>
+                {/*<div className="text-xs text-muted-foreground">失败</div>*/}
                 <div className="text-sm font-semibold text-red-600">
                   {activeTaskData.statistics.failed_videos}
                 </div>

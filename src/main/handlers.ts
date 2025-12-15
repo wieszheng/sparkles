@@ -28,7 +28,7 @@ import fs from "fs-extra";
 import { File, FormData } from "formdata-node";
 import path from "path";
 
-const BACKEND_HOST = "127.0.0.1";
+const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
 
 export function initIpcHandlers(): void {
