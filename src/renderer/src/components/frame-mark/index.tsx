@@ -268,42 +268,81 @@ export function FrameMark() {
     }
   };
 
-  const handleExportData = () => {
+  const handleExportData = async () => {
     if (!activeTaskData) return;
+    try {
+      const dataList = await window.api.callApi(
+        "GET",
+        `${Api.TaskDetail}/${activeTaskId}/export`,
+      );
 
-    // Client-side CSV generation based on Task Data
-    const headers = [
-      "Video Name",
-      "Status",
-      "Duration (s)",
-      "First Frame (s)",
-      "Last Frame (s)",
-      "Net Duration (s)",
-    ];
-    const rows = activeTaskData.videos.map((v) => {
-      const net =
-        v.last_frame_time !== null && v.first_frame_time !== null
-          ? (v.last_frame_time - v.first_frame_time).toFixed(3)
-          : "";
-      return [
-        `"${v.video_filename}"`,
-        v.video_status,
-        v.duration_ms?.toFixed(2) || "",
-        v.first_frame_time?.toFixed(3) || "",
-        v.last_frame_time?.toFixed(3) || "",
-        net,
-      ].join(",");
-    });
+      // 定义 CSV 表头
+      const headers = [
+        "Task Name",
+        "Video Filename",
+        "Sequence",
+        "First Frame Timestamp",
+        "Last Frame Timestamp",
+        "Duration (ms)",
+        "Duration (seconds)",
+        "First Frame Number",
+        "Last Frame Number",
+        "Video Duration",
+        "Video FPS",
+        "Video Resolution",
+        "Notes",
+        "Added At",
+      ];
 
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${activeTaskData.name}_report.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // 处理数据行
+      const rows = dataList.map((item) =>
+        [
+          `"${item.task_name}"`,
+          `"${item.video_filename}"`,
+          item.sequence,
+          item.first_frame_timestamp,
+          item.last_frame_timestamp,
+          item.duration_ms,
+          item.duration_seconds,
+          item.first_frame_number,
+          item.last_frame_number,
+          item.video_duration,
+          item.video_fps,
+          `"${item.video_resolution}"`,
+          item.notes ? `"${item.notes}"` : "",
+          item.added_at,
+        ].join(","),
+      );
+
+      // 生成 CSV 内容
+      const csvContent = [headers.join(","), ...rows].join("\n");
+      const options = {
+        title: "保存数据报告",
+        defaultPath: `${activeTaskData.name}_data_report.csv`,
+        filters: [
+          {
+            name: "CSV Files",
+            extensions: ["csv"],
+          },
+        ],
+      };
+
+      const saveResult = await window.api.showSaveDialog(options);
+      if (saveResult.canceled || !saveResult.filePath) {
+        return; // 用户取消了保存
+      }
+      // 将 CSV 内容转换为字节数组并保存
+      const encoder = new TextEncoder();
+      const csvBytes = encoder.encode(csvContent);
+
+      // 使用 Electron 的 API 保存文件
+      await window.api.saveFile(saveResult.filePath, Array.from(csvBytes));
+
+      toast.success("数据导出成功");
+    } catch (e) {
+      console.error("Failed to export data", e);
+      toast.error("数据导出失败");
+    }
   };
   return (
     <div className="flex h-full">
