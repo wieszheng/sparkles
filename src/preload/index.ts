@@ -168,6 +168,37 @@ const api = {
       image: Uint8Array,
     ) => void,
   ) => ipcRenderer.removeListener("screencast", callback),
+
+  // 启动监控
+  startMonitor: (packageName: string, config: any) =>
+    ipcRenderer.invoke("monitor:start", { packageName, config }),
+
+  // 停止监控
+  stopMonitor: () => ipcRenderer.invoke("monitor:stop"),
+
+  // 单次采集
+  collectOnce: (options: any) =>
+    ipcRenderer.invoke("monitor:collect-once", options),
+
+  // 监听数据事件
+  onData: (callback: (data: any) => void) => {
+    ipcRenderer.on("monitor:data", (_, data) => callback(data));
+  },
+
+  // 监听告警事件
+  onAlert: (callback: (alert: any) => void) => {
+    ipcRenderer.on("monitor:alert", (_, alert) => callback(alert));
+  },
+
+  // 监听错误事件
+  onError: (callback: (error: any) => void) => {
+    ipcRenderer.on("monitor:error", (_, error) => callback(error));
+  },
+
+  // 移除监听器
+  removeListener: (channel: string) => {
+    ipcRenderer.removeAllListeners(channel);
+  },
 };
 
 const extendedElectronAPI = {

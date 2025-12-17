@@ -80,8 +80,8 @@ function Main() {
   const [newProject, setNewProject] = useState({
     name: "",
     description: "",
-    team: "",
-    tags: "",
+    members: "",
+    tag: "",
   });
   const [newProjectAction, setNewProjectAction] = useState(false);
   const [showToolSettings, setShowToolSettings] = useState(false);
@@ -147,13 +147,10 @@ function Main() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const resp = await window.api.callApi("POST", Api.getProjectAll, {
-          current: 1,
-          pageSize: 100,
-        });
-        const items = resp?.data?.items || [];
-        setProjects(items);
-        if (!selectedProject && items.length > 0) setSelectedProject(items[0]);
+        const resp = await window.api.callApi("GET", Api.Project);
+        console.log("获取项目列表:", resp);
+        setProjects(resp);
+        if (!selectedProject && resp.length > 0) setSelectedProject(resp[0]);
       } catch (e) {
         console.error("获取项目列表失败", e);
       }
@@ -186,7 +183,7 @@ function Main() {
       case "screen-mirror":
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
       case "video-frame-analyzer":
-        return <FrameMark />;
+        return <FrameMark selectedProject={selectedProject!} />;
       case "monitoring":
         return <Monitoring />;
       case "toolbar":
@@ -255,21 +252,18 @@ function Main() {
     const project = {
       name: newProject.name,
       description: newProject.description || "暂无",
-      last_run: "从未运行",
-      team: newProject.team
-        ? newProject.team.split("，").map((t) => t.trim())
-        : [],
-      tags: newProject.tags
-        ? newProject.tags.split("，").map((t) => t.trim())
-        : [],
+      members: newProject.members,
+      tag: newProject.tag,
+      owner: "admin",
+      created_by: "admin",
     };
-    const data = await window.api.callApi("POST", Api.createProject, project);
-    if (data.success) {
+    const data = await window.api.callApi("POST", Api.Project, project);
+    if (data) {
       setNewProject({
         name: "",
         description: "",
-        team: "",
-        tags: "",
+        members: "",
+        tag: "",
       });
       setNewProjectAction(!newProjectAction);
       toast.success("项目创建成功");
@@ -346,9 +340,12 @@ function Main() {
                       <Label htmlFor="project-team">团队成员</Label>
                       <Input
                         id="project-team"
-                        value={newProject.team}
+                        value={newProject.members}
                         onChange={(e) =>
-                          setNewProject({ ...newProject, team: e.target.value })
+                          setNewProject({
+                            ...newProject,
+                            members: e.target.value,
+                          })
                         }
                         placeholder="张三, 李四, 王五"
                       />
@@ -375,9 +372,9 @@ function Main() {
                     <Label htmlFor="project-tags">标签</Label>
                     <Input
                       id="project-tags"
-                      value={newProject.tags}
+                      value={newProject.tag}
                       onChange={(e) =>
-                        setNewProject({ ...newProject, tags: e.target.value })
+                        setNewProject({ ...newProject, tag: e.target.value })
                       }
                       placeholder="UI测试, 回归测试, 性能测试"
                     />

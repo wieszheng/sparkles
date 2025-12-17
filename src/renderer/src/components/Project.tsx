@@ -47,10 +47,10 @@ import {
   Eye,
   Users,
   TestTube,
-  CheckCircle,
   Clock,
   Sparkles,
   Save,
+  Video,
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -105,22 +105,15 @@ export function Project({ action }: { action: boolean }) {
   const [projectSettings, setProjectSettings] = useState({
     name: "",
     description: "",
-    team: "",
-    tags: "",
-    aiInsights: false,
-    notifications: true,
-    autoRun: false,
-    maxConcurrent: 5,
-    timeout: 30,
+    members: "",
+    tag: "",
   });
 
   const getProjectAll = async () => {
     setIsLoading(true);
-    const response = await window.api.callApi("POSt", Api.getProjectAll, {
-      current: 1,
-      pageSize: 100,
-    });
-    setProjects(response.data.items);
+    const res = await window.api.callApi("GET", Api.Project);
+    setProjects(res);
+    console.log("获取项目列表", res);
     setIsLoading(false);
   };
 
@@ -144,13 +137,8 @@ export function Project({ action }: { action: boolean }) {
     setProjectSettings({
       name: project.name,
       description: project.description,
-      team: project.team.join(", "),
-      tags: project.tags?.join(", ") || "",
-      aiInsights: project.aiInsights,
-      notifications: true,
-      autoRun: false,
-      maxConcurrent: 5,
-      timeout: 30,
+      members: project.members?.join(", ") || "",
+      tag: project.tag?.join(", ") || "",
     });
     setSettingsDialogOpen(true);
   };
@@ -159,14 +147,12 @@ export function Project({ action }: { action: boolean }) {
     if (projectToDelete) {
       setIsDeleting(true);
       try {
-        const data = await window.api.callApi(
+        const res = await window.api.callApi(
           "DELETE",
-          `${Api.deleteProject}/${projectToDelete.id}`,
+          `${Api.Project}/${projectToDelete.id}`,
         );
-        if (data.success) {
+        if (res) {
           toast.success("项目删除成功");
-        } else {
-          toast.error(data.message);
         }
       } catch (error) {
         toast.error("删除项目失败", error || "");
@@ -186,16 +172,15 @@ export function Project({ action }: { action: boolean }) {
     try {
       const data = await window.api.callApi(
         "PUT",
-        `${Api.updateProject}/${selectedProject.id}`,
+        `${Api.Project}/${selectedProject.id}`,
         {
           name: projectSettings.name,
           description: projectSettings.description,
-          team: projectSettings.team.split(",").map((t) => t.trim()),
-          tags: projectSettings.tags.split(",").map((t) => t.trim()),
-          aiInsights: projectSettings.aiInsights,
+          members: projectSettings.members,
+          tag: projectSettings.tag,
         },
       );
-      if (data.success) {
+      if (data) {
         toast.success("项目设置保存成功");
       } else {
         toast.error(data.message);
@@ -289,7 +274,7 @@ export function Project({ action }: { action: boolean }) {
                         <div className="space-y-1">
                           <CardTitle className="text-lg flex items-center gap-2">
                             {project.name}
-                            {project.aiInsights && (
+                            {project.name && (
                               <Sparkles className="h-4 w-4 text-primary" />
                             )}
                           </CardTitle>
@@ -340,8 +325,8 @@ export function Project({ action }: { action: boolean }) {
                         <Badge variant="secondary" className="text-xs">
                           {getStatusText(project.status)}
                         </Badge>
-                        {project.tags &&
-                          project.tags.map((tag, index) => (
+                        {project.tag &&
+                          project.tag.map((tag, index) => (
                             <Badge
                               key={index}
                               variant="outline"
@@ -361,14 +346,14 @@ export function Project({ action }: { action: boolean }) {
                           className="flex items-center gap-2"
                         >
                           <TestTube className="h-4 w-4 text-muted-foreground" />
-                          <span>{project.testCases} 用例</span>
+                          <span>{project.total_tasks} 任务</span>
                         </motion.div>
                         <motion.div
                           whileHover={{ scale: 1.05 }}
                           className="flex items-center gap-2"
                         >
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span>{project.passRate}% 通过</span>
+                          <Video className="h-4 w-4 " />
+                          <span>{project.total_videos} 视频</span>
                         </motion.div>
 
                         <motion.div
@@ -376,7 +361,7 @@ export function Project({ action }: { action: boolean }) {
                           className="flex items-center gap-2"
                         >
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <span>{project.team.length} 成员</span>
+                          <span>{project.members?.length} 成员</span>
                         </motion.div>
                       </div>
 
@@ -384,7 +369,7 @@ export function Project({ action }: { action: boolean }) {
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>最后运行: {project.lastRun}</span>
+                          <span>创建时间: {project.created_at}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -422,11 +407,11 @@ export function Project({ action }: { action: boolean }) {
                   <Label htmlFor="settings-team">团队成员</Label>
                   <Input
                     id="settings-team"
-                    value={projectSettings.team}
+                    value={projectSettings.members}
                     onChange={(e) =>
                       setProjectSettings({
                         ...projectSettings,
-                        team: e.target.value,
+                        members: e.target.value,
                       })
                     }
                     placeholder="张三, 李四, 王五"
@@ -452,11 +437,11 @@ export function Project({ action }: { action: boolean }) {
                 <Label htmlFor="settings-tags">标签</Label>
                 <Input
                   id="settings-tags"
-                  value={projectSettings.tags}
+                  value={projectSettings.tag}
                   onChange={(e) =>
                     setProjectSettings({
                       ...projectSettings,
-                      tags: e.target.value,
+                      tag: e.target.value,
                     })
                   }
                   placeholder="UI测试, 回归测试, 性能测试"

@@ -1,14 +1,16 @@
-import { app, shell, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { join } from "path";
-import { electronApp, optimizer, is } from "@electron-toolkit/utils";
+import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
 import { initializeAutoUpdater } from "./updater";
 import { initHdcClient } from "./hdc";
 import { initIpcHandlers } from "./handlers";
 import { setupMenu } from "./menu";
 import { destroyTray, setUpTray } from "./tray";
+import { SPDaemon } from "./hdc/sp-daemon.ts";
 
 let loadingWindow: BrowserWindow | null = null;
+let daemon: SPDaemon | null = null;
 
 function createLoadingWindow() {
   loadingWindow = new BrowserWindow({
@@ -51,6 +53,7 @@ function createWindow(): void {
   initializeAutoUpdater(mainWindow);
   initHdcClient(mainWindow);
   initIpcHandlers();
+  daemon = new SPDaemon(mainWindow);
 
   mainWindow.on("ready-to-show", () => {
     setupMenu();
@@ -127,5 +130,33 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     destroyTray();
     app.quit();
+  }
+});
+
+// IPC 通信处理器
+ipcMain.handle("monitor:start", async (_, { packageName, config }) => {
+  try {
+    await daemon?.startMonitor(packageName, config);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle("monitor:stop", async () => {
+  try {
+    daemon?.stopMonitor();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle("monitor:collect-once", async (_, options) => {
+  try {
+    const result = await daemon?.collect(options);
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: String(error) };
   }
 });

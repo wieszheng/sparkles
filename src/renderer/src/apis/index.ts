@@ -30,4 +30,6 @@ export const Api = {
   TaskDetail: "/api/v1/task",
   TaskVideoFrames: "/api/v1/task",
   getVideoStatus: "/api/v1/video/status",
+
+  Project: "/api/v1/project",
 };

@@ -79,9 +79,12 @@ interface Project {
   passRate: number;
   lastRun: string;
   team: string[];
+  members: string[];
   aiInsights: boolean;
-  template?: string;
-  tags?: string[];
+  tag?: string[];
+  total_tasks: number;
+  total_videos: number;
+  created_at: string;
 }
 
 interface Directory {

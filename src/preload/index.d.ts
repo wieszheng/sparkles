@@ -43,6 +43,35 @@ interface BundleInfo {
   mainAbility?: string;
 }
 
+interface MonitorConfig {
+  interval?: number;
+  thresholds?: {
+    fpsWarning?: number;
+    fpsCritical?: number;
+    cpuWarning?: number;
+    cpuCritical?: number;
+    memoryWarning?: number;
+    memoryCritical?: number;
+    temperatureWarning?: number;
+    temperatureCritical?: number;
+    powerWarning?: number;
+    powerCritical?: number;
+  };
+  enableAlerts?: boolean;
+}
+
+interface CollectOptions {
+  N: number;
+  PKG?: string;
+  cpu?: boolean;
+  gpu?: boolean;
+  fps?: boolean;
+  temperature?: boolean;
+  power?: boolean;
+  ram?: boolean;
+  net?: boolean;
+}
+
 interface Api {
   callApi: (method: string, endpoint: string, data?: object, contentType?: "json" | "form-data") => Promise<any>;
   request: <T = any>(options: RequestOptions) => Promise<any>;
@@ -76,10 +105,10 @@ interface Api {
   getDirectoryFiles: (directoryPath: string, extension?: string) => Promise<string[]>;
   openFileDialog: (options: OpenFileDialogOptions) => Promise<OpenFileDialogResult>;
   showSaveDialog: (options: SaveDialogOptions) => Promise<SaveDialogResult>;
-  
+
   // 文件操作API
   saveFile: (filePath: string, data: number[]) => Promise<{ success: boolean }>;
-  
+
   // 读取本地文件API
   readFile: (filePath: string) => Promise<{ success: boolean; data?: number[]; fileName?: string; mimeType?: string }>;
 
@@ -109,6 +138,16 @@ interface Api {
   // 屏幕镜像事件监听
   onScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
   offScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
+
+
+  startMonitor: (packageName: string, config: MonitorConfig) => Promise<{ success: boolean; error?: string }>;
+  stopMonitor: () => Promise<{ success: boolean; error?: string }>;
+  collectOnce: (options: CollectOptions) => Promise<{ success: boolean; data?: any; error?: string }>;
+
+  onData: (callback: (data: any) => void) => void;
+  onAlert: (callback: (alert: any) => void) => void;
+  onError: (callback: (error: any) => void) => void;
+  removeListener: (channel: string) => void;
 }
 
 declare global {

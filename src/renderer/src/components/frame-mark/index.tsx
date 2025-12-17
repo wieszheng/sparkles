@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Api } from "@/apis";
 import { toast } from "sonner";
 
-export function FrameMark() {
+export function FrameMark({ selectedProject }: { selectedProject: Project }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
@@ -18,20 +18,21 @@ export function FrameMark() {
     useState<VideoDetail | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
-
+  console.log("FrameMark selectedProject", selectedProject);
   // Load Tasks on Mount
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [selectedProject]);
 
   const loadTasks = async () => {
     try {
       const data = await window.api.callApi(
         "GET",
-        `${Api.TaskList}?skip=0&limit=100`,
+        `${Api.TaskList}?skip=0&limit=100&project_id=${selectedProject.id}`,
       );
+      console.log("loadTasks", data);
       setTasks(data);
-      if (data.length > 0 && !activeTaskId) {
+      if (data.length > 0) {
         setActiveTaskId(data[0].id);
       }
     } catch (e) {
@@ -147,6 +148,7 @@ export function FrameMark() {
       const newTask = await window.api.callApi("POST", Api.TaskCreate, {
         name,
         created_by: "Sparkles",
+        project_id: selectedProject.id,
       });
       setTasks((prev) => [newTask, ...prev]);
       setActiveTaskId(newTask.id);
