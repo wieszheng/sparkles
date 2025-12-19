@@ -185,7 +185,7 @@ function Main() {
       case "video-frame-analyzer":
         return <FrameMark selectedProject={selectedProject!} />;
       case "monitoring":
-        return <Monitoring />;
+        return <Monitoring selectedDevice={selectedDeviceId} />;
       case "toolbar":
         return <Toolbar selectedDevice={selectedDeviceId} />;
       case "qrcode":

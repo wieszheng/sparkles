@@ -1,634 +1,491 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import "./styles.css";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Plus, BarChart3, ListTodo, Settings, Package } from "lucide-react";
 
-interface AppPerformanceMetrics {
-  packageName: string;
-  timestamp: number;
-  fps: number;
-  fpsStability: number;
-  appCpuUsage: number;
-  appMemoryUsage: number;
-  appMemoryPercent: number;
-  gpuLoad: number;
-  powerConsumption: number;
-  networkUpSpeed: number;
-  networkDownSpeed: number;
-  deviceTemperature: number;
-  performanceScore: {
-    overall: number;
-    fpsScore: number;
-    cpuScore: number;
-    memoryScore: number;
-    temperatureScore: number;
-    powerScore: number;
-    grade: string;
+// 子组件
+import { MonitoringDashboard } from "./monitoring/monitoring-dashboard";
+import { TaskManagement } from "./monitoring/task-management";
+import { ScriptMarket } from "./monitoring/script-editor";
+import { MonitoringConfigPanel } from "./monitoring/monitoring-config";
+import { TaskDetailSheet } from "./monitoring/task-detail-sheet";
+import { CreateTaskDialog } from "./monitoring/create-task-dialog";
+
+function statusMap(status: SceneTaskStatus): MonitorTaskStatus {
+  switch (status) {
+    case "running":
+      return "running";
+    case "finished":
+      return "completed";
+    case "error":
+      return "error";
+    case "idle":
+    default:
+      return "pending";
+  }
+}
+
+function buildTaskDataFromSamples(
+  samples: MonitorSample[] | undefined,
+  metrics?: MonitoringMetric[],
+): MonitoringTask["data"] | undefined {
+  if (!samples || samples.length === 0) return undefined;
+
+  const toTime = (ts: number) => {
+    try {
+      return new Date(ts).toLocaleTimeString();
+    } catch {
+      return String(ts);
+    }
   };
+
+  // 根据任务配置的监控指标来决定生成哪些数据
+  const result: MonitoringTask["data"] = {
+    cpu: [],
+    memory: [],
+    gpu: [],
+    fps: [],
+    temperature: [],
+    power: [],
+    network: [],
+  };
+
+  console.log("metrics", metrics);
+  if (!metrics || metrics.includes("cpu")) {
+    result.cpu = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.appCpuUsage ?? s.cpu ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("memory")) {
+    result.memory = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.appMemoryUsage ?? s.memory ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("gpu")) {
+    result.gpu = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.gpuLoad ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("fps")) {
+    result.fps = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.fps ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("temperature")) {
+    result.temperature = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.deviceTemperature ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("power")) {
+    result.power = samples.map((s) => ({
+      time: toTime(s.timestamp),
+      value: s.powerConsumption ?? 0,
+    }));
+  }
+
+  if (!metrics || metrics.includes("network")) {
+    result.network = samples.map((s) => {
+      const up = s.networkUpSpeed ?? 0;
+      const down = s.networkDownSpeed ?? 0;
+      // KB/s -> MB/s
+      const mbps = (up + down) / 1024;
+      return {
+        time: toTime(s.timestamp),
+        value: mbps,
+      };
+    });
+  }
+  console.log("result", result);
+  return result;
 }
 
-interface PerformanceAlert {
-  timestamp: number;
-  level: "warning" | "critical";
-  type: string;
-  message: string;
-  value: number;
-  threshold: number;
-}
-
-export function Monitoring() {
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [packageName, setPackageName] = useState("com.baidu.yiyan.ent");
-  const [currentMetrics, setCurrentMetrics] =
-    useState<AppPerformanceMetrics | null>(null);
-  const [historyData, setHistoryData] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
-  const [showConfig, setShowConfig] = useState(false);
-  const [maxDataPoints, setMaxDataPoints] = useState(60);
-  const [statistics, setStatistics] = useState<any>(null);
-
-  // 监控项配置
-  const [monitorItems, setMonitorItems] = useState({
-    fps: true,
-    cpu: true,
-    memory: true,
-    gpu: true,
-    power: true,
-    temperature: true,
-    network: true,
+export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    script: "",
+    app: "",
+    metrics: {
+      cpu: true,
+      memory: true,
+      gpu: false,
+      fps: false,
+      temperature: false,
+      power: false,
+      network: false,
+    } as Omit<MonitorConfig, "interval">,
   });
 
-  // 阈值配置
-  const [thresholds, setThresholds] = useState({
-    fpsWarning: 45,
-    fpsCritical: 30,
-    cpuWarning: 70,
-    cpuCritical: 90,
-    memoryWarning: 60,
-    memoryCritical: 80,
-    temperatureWarning: 42,
-    temperatureCritical: 48,
-    powerWarning: 3,
-    powerCritical: 5,
+  const [monitorConfig, setMonitorConfig] = useState<{ interval?: string }>({
+    interval: "1",
   });
+  const [backendTasks, setBackendTasks] = useState<SceneTask[]>([]);
+  const [metricsMap, setMetricsMap] = useState<Record<string, MonitorSample[]>>(
+    {},
+  );
 
-  // 设置IPC监听器
+  const [openTaskDialog, setOpenTaskDialog] = useState(false);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<MonitoringTask | null>(null);
+  // const [, setScriptTemplates] = useState<ScriptTemplateSummary[]>([])
+  const [apps, setApps] = useState<Application[]>([]);
+  const [scripts, setScripts] = useState<ScriptFile[]>([]);
+
+  const [alertThresholds, setAlertThresholds] = useState<AlertThresholdsConfig>(
+    {
+      fpsWarning: 30,
+      fpsCritical: 15,
+      cpuWarning: 80,
+      cpuCritical: 95,
+      memoryWarning: 80,
+      memoryCritical: 95,
+      temperatureWarning: 45,
+      temperatureCritical: 55,
+    },
+  );
+
+  const [enableAlerts, setEnableAlerts] = useState(false);
+
+  const tasks: MonitoringTask[] = useMemo(() => {
+    return backendTasks.map((t, index) => {
+      const samples = metricsMap[t.id] ?? [];
+
+      const data = buildTaskDataFromSamples(samples, t.metrics);
+
+      return {
+        id: index + 1,
+        name: t.name,
+        script: t.scriptTemplateId,
+        app: t.packageName,
+        status: statusMap(t.status),
+        createdAt: new Date(t.createdAt).toISOString().split("T")[0],
+        deprecated: false,
+        reportData: true,
+        startTime: samples[0]
+          ? new Date(samples[0].timestamp).toLocaleString()
+          : undefined,
+        endTime: undefined,
+        backendId: t.id,
+        data,
+      };
+    });
+  }, [backendTasks, metricsMap]);
+
   useEffect(() => {
-    // 监听数据
-    window.api.onData((metrics: AppPerformanceMetrics) => {
-      setCurrentMetrics(metrics);
-      setHistoryData((prev) => {
-        const newData = [
-          ...prev,
-          {
-            time: new Date(metrics.timestamp).toLocaleTimeString(),
-            timestamp: metrics.timestamp,
-            fps: metrics.fps,
-            cpu: metrics.appCpuUsage,
-            memory: metrics.appMemoryUsage,
-            gpu: metrics.gpuLoad,
-            power: metrics.powerConsumption,
-            temperature: metrics.deviceTemperature,
-            networkUp: metrics.networkUpSpeed,
-            networkDown: metrics.networkDownSpeed,
-          },
-        ];
+    const hasRunning = backendTasks.some((t) => t.status === "running");
+    if (!hasRunning) return;
 
-        if (newData.length > maxDataPoints) {
-          return newData.slice(-maxDataPoints);
-        }
-        return newData;
+    const timer = setInterval(() => {
+      void loadTasks();
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [backendTasks]);
+
+  const loadApps = async () => {
+    try {
+      const bundleNames = await window.api.getBundles(selectedDevice, false);
+
+      if (bundleNames.length > 0) {
+        // 获取应用详细信息
+        const bundleInfos = await window.api.getBundleInfos(
+          selectedDevice,
+          bundleNames,
+        );
+        setApps(bundleInfos);
+      } else {
+        setApps([]);
+      }
+    } catch (error) {
+      console.error("加载应用列表失败:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+    loadApps();
+    // 脚本模板
+    window.api
+      .listScriptTemplates()
+      .then((templates) => {
+        const mappedScripts: ScriptFile[] = templates.map((t, idx) => ({
+          id: idx + 1,
+          name: t.id, // 这里存放真实的 scriptTemplateId，创建任务时直接使用
+          label: t.name,
+          description: t.description ?? "",
+          content: "// 脚本模板在主进程中以函数形式定义，此处仅展示元信息",
+          lastModified: "",
+          category: "other",
+          difficulty: "beginner",
+          downloads: 0,
+          rating: 5,
+          author: "内置模板",
+          tags: [],
+        }));
+
+        setScripts(mappedScripts);
+      })
+      .catch(console.error);
+
+    // 监控数据
+    const unsubscribeMonitorData = window.api.onMonitorData((sample) => {
+      setMetricsMap((prev) => {
+        const list = prev[sample.taskId] ?? [];
+        return {
+          ...prev,
+          [sample.taskId]: [...list, sample],
+        };
       });
     });
 
-    // 监听告警
-    window.api.onAlert((alert: PerformanceAlert) => {
-      setAlerts((prev) => [{ ...alert, id: Date.now() }, ...prev].slice(0, 10));
-    });
+    // 告警与错误
+    const unsubscribeAlert = window.api.onMonitorAlert((alert) => {
+      // setAlerts((prev) => [alert, ...prev].slice(0, 100));
 
-    // 监听错误
-    window.api.onError((error: any) => {
-      console.error("Monitor error:", error);
-      alert(`监控错误: ${error.error}`);
+      console.log("alert", alert.type);
+    });
+    const unsubscribeError = window.api.onMonitorError((evt) => {
+      // setErrors((prev) => [evt, ...prev].slice(0, 100));
+      console.log("error", evt);
     });
 
     return () => {
-      window.api.removeListener("monitor:data");
-      window.api.removeListener("monitor:alert");
-      window.api.removeListener("monitor:error");
+      unsubscribeMonitorData();
+      unsubscribeAlert();
+      unsubscribeError();
     };
-  }, [maxDataPoints]);
+  }, []);
 
-  // 开始监控
-  const handleStartMonitor = useCallback(async () => {
-    if (!packageName.trim()) {
-      alert("请输入包名");
-      return;
-    }
-
-    setHistoryData([]);
-    setAlerts([]);
-    setStatistics(null);
-
-    const result = await window.api.startMonitor(packageName, {
-      interval: 1,
-      thresholds,
-      enableAlerts: true,
+  const handleOpenTaskDialog = () => {
+    setFormData({
+      name: "",
+      script: "",
+      app: "",
+      metrics: {
+        cpu: true,
+        memory: true,
+        gpu: false,
+        fps: false,
+        temperature: false,
+        power: false,
+        network: false,
+      } as Omit<MonitorConfig, "interval">,
     });
+    setOpenTaskDialog(true);
+  };
+  const loadTasks = async () => {
+    const data = await window.api.listTasks();
+    setBackendTasks(data);
+  };
+  const handleCreateTask = () => {
+    if (!formData.name || !formData.script || !formData.app) return;
 
-    if (result.success) {
-      setIsMonitoring(true);
-    } else {
-      alert(`启动监控失败: ${result.error}`);
-    }
-  }, [packageName, thresholds]);
-
-  // 停止监控
-  const handleStopMonitor = useCallback(async () => {
-    const result = await window.api.stopMonitor();
-
-    if (result.success) {
-      setIsMonitoring(false);
-      calculateStatistics();
-    } else {
-      alert(`停止监控失败: ${result.error}`);
-    }
-  }, [historyData]);
-
-  // 计算统计数据
-  const calculateStatistics = useCallback(() => {
-    if (historyData.length === 0) return;
-
-    const calc = (field: string) => {
-      const values = historyData.map((d) => d[field]);
-      return {
-        avg: values.reduce((a, b) => a + b, 0) / values.length,
-        min: Math.min(...values),
-        max: Math.max(...values),
-      };
-    };
-
-    setStatistics({
-      fps: calc("fps"),
-      cpu: calc("cpu"),
-      memory: calc("memory"),
-      temperature: calc("temperature"),
-      power: calc("power"),
-    });
-  }, [historyData]);
-
-  // 导出数据
-  const handleExportData = useCallback(async () => {
-    const data = {
-      packageName,
-      startTime: historyData[0]?.timestamp,
-      endTime: historyData[historyData.length - 1]?.timestamp,
-      statistics,
-      historyData,
-      alerts,
-    };
-
-    // const result = await window.api.saveFile(data);
-    //
-    // if (result.success) {
-    //   alert(`报告已保存到: ${result.path}`);
-    // } else {
-    //   alert("保存失败");
-    // }
-  }, [packageName, historyData, statistics, alerts]);
-
-  // 单次采集
-  const handleCollectOnce = useCallback(async () => {
-    if (!packageName.trim()) {
-      alert("请输入包名");
-      return;
-    }
-
-    const result = await window.api.collectOnce({
-      N: 1,
-      PKG: packageName,
-      cpu: true,
-      gpu: true,
-      fps: true,
-      temperature: true,
-      power: true,
-      ram: true,
-      net: true,
-    });
-
-    if (result.success) {
-      console.log("采集结果:", result.data);
-      alert("采集成功,查看控制台");
-    } else {
-      alert(`采集失败: ${result.error}`);
-    }
-  }, [packageName]);
-
-  // 指标卡片组件
-  const MetricCard: React.FC<{
-    title: string;
-    value: number | string;
-    unit: string;
-    color: string;
-    threshold?: { warning: number; critical: number };
-    current?: number;
-  }> = ({ title, value, unit, color, threshold, current }) => {
-    const isWarning = threshold && current && current > threshold.warning;
-    const isCritical = threshold && current && current > threshold.critical;
-    const statusColor = isCritical
-      ? "bg-red-500"
-      : isWarning
-        ? "bg-yellow-500"
-        : "bg-green-500";
-
-    return (
-      <div className="metric-card" style={{ borderLeftColor: color }}>
-        <div className="metric-header">
-          <span className="metric-title">{title}</span>
-          {threshold && (
-            <div className={`status-indicator ${statusColor}`}></div>
-          )}
-        </div>
-        <div className="metric-value">
-          {typeof value === "number" ? value.toFixed(1) : value || "--"}
-          <span className="metric-unit">{unit}</span>
-        </div>
-      </div>
+    const metricKeys: MonitoringMetric[] = (
+      Object.keys(formData.metrics) as MonitoringMetric[]
+    ).filter(
+      (k) => formData.metrics[k as keyof Omit<MonitorConfig, "interval">],
     );
+
+    if (metricKeys.length === 0) return;
+
+    const id = `${Date.now()}`;
+
+    void window.api
+      .createTask({
+        id,
+        name: formData.name,
+        packageName: formData.app,
+        connectKey: selectedDevice,
+        metrics: metricKeys,
+        scriptTemplateId: formData.script,
+        monitorConfig: enableAlerts
+          ? {
+              enableAlerts: true,
+              thresholds: alertThresholds,
+            }
+          : undefined,
+      })
+      .then(async () => {
+        setOpenTaskDialog(false);
+        setFormData({
+          name: "",
+          script: "",
+          app: "",
+          metrics: {
+            cpu: true,
+            memory: true,
+            gpu: false,
+            fps: false,
+            temperature: false,
+            power: false,
+            network: false,
+          } as Omit<MonitorConfig, "interval">,
+        });
+        await loadTasks();
+        // 新建任务后主动启动执行
+        await window.api.startTask(id);
+        await loadTasks();
+      })
+      .catch(console.error);
   };
 
-  // 图表渲染
-  const renderChart = (
-    dataKey: string,
-    title: string,
-    color: string,
-    yAxisLabel: string,
-  ) => {
-    if (!monitorItems[dataKey as keyof typeof monitorItems]) return null;
+  const handleDeleteTask = (id: number) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task?.backendId) return;
+    void window.api
+      .removeTask(task.backendId)
+      .then(() => {
+        void loadTasks();
+      })
+      .catch(console.error);
+  };
 
-    return (
-      <div className="chart-container">
-        <h3 className="chart-title">{title}</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={historyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="time"
-              tick={{ fontSize: 12 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              label={{ value: yAxisLabel, angle: -90, position: "insideLeft" }}
-              tick={{ fontSize: 12 }}
-            />
-            <Tooltip />
-            <Line
-              type="monotone"
-              dataKey={dataKey}
-              stroke={color}
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+  const handleViewTask = (task: MonitoringTask) => {
+    setSelectedTask(task);
+    setShowDetailSheet(true);
+  };
+
+  const handleToggleTaskStatus = (id: number) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task?.backendId) return;
+
+    const action =
+      task.status === "running"
+        ? () => window.api.stopTask(task.backendId!)
+        : () => window.api.startTask(task.backendId!);
+
+    void action()
+      .then(() => {
+        void loadTasks();
+      })
+      .catch(console.error);
+  };
+
+  const handleSaveScript = (id: number, content: string) => {
+    setScripts(
+      scripts.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              content,
+              lastModified: new Date().toISOString().split("T")[0],
+            }
+          : s,
+      ),
     );
   };
 
   return (
-    <div className="app-container">
-      {/* 头部 */}
-      <div className="header-panel">
-        <div className="header-content">
-          <h1 className="app-title">应用性能实时监控</h1>
-          <button
-            className="config-button"
-            onClick={() => setShowConfig(!showConfig)}
-          >
-            ⚙️ 配置
-          </button>
-        </div>
-
-        {/* 配置面板 */}
-        {showConfig && (
-          <div className="config-panel">
-            <h3 className="config-title">监控项配置</h3>
-            <div className="config-grid">
-              {Object.keys(monitorItems).map((key) => (
-                <label key={key} className="config-item">
-                  <input
-                    type="checkbox"
-                    checked={monitorItems[key as keyof typeof monitorItems]}
-                    onChange={(e) =>
-                      setMonitorItems({
-                        ...monitorItems,
-                        [key]: e.target.checked,
-                      })
-                    }
-                  />
-                  <span>{key.toUpperCase()}</span>
-                </label>
-              ))}
-            </div>
-
-            <h3 className="config-title">告警阈值</h3>
-            <div className="threshold-grid">
-              {Object.keys(thresholds).map((key) => (
-                <div key={key} className="threshold-item">
-                  <label>{key.replace(/([A-Z])/g, " $1").trim()}</label>
-                  <input
-                    type="number"
-                    value={thresholds[key as keyof typeof thresholds]}
-                    onChange={(e) =>
-                      setThresholds({
-                        ...thresholds,
-                        [key]: parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="datapoints-config">
-              <label>历史数据点数</label>
-              <input
-                type="number"
-                value={maxDataPoints}
-                onChange={(e) => setMaxDataPoints(parseInt(e.target.value))}
-                min="10"
-                max="300"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* 控制区 */}
-        <div className="control-bar">
-          <input
-            type="text"
-            value={packageName}
-            onChange={(e) => setPackageName(e.target.value)}
-            placeholder="输入应用包名"
-            className="package-input"
-            disabled={isMonitoring}
-          />
-          {!isMonitoring ? (
-            <>
-              <button className="btn btn-success" onClick={handleStartMonitor}>
-                ▶️ 开始监控
-              </button>
-              <button className="btn btn-secondary" onClick={handleCollectOnce}>
-                🔍 单次采集
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-danger" onClick={handleStopMonitor}>
-              ⏹️ 停止监控
-            </button>
-          )}
-          <button
-            className="btn btn-primary"
-            onClick={handleExportData}
-            disabled={historyData.length === 0}
-          >
-            💾 导出报告
-          </button>
-        </div>
-      </div>
-
-      {/* 实时指标 */}
-      {currentMetrics && (
-        <>
-          <div className="metrics-grid">
-            {monitorItems.fps && (
-              <MetricCard
-                title="FPS"
-                value={currentMetrics.fps}
-                unit="fps"
-                color="#10b981"
-                current={60 - currentMetrics.fps}
-                threshold={{
-                  warning: 60 - thresholds.fpsWarning,
-                  critical: 60 - thresholds.fpsCritical,
-                }}
-              />
-            )}
-            {monitorItems.cpu && (
-              <MetricCard
-                title="CPU"
-                value={currentMetrics.appCpuUsage}
-                unit="%"
-                color="#3b82f6"
-                current={currentMetrics.appCpuUsage}
-                threshold={{
-                  warning: thresholds.cpuWarning,
-                  critical: thresholds.cpuCritical,
-                }}
-              />
-            )}
-            {monitorItems.memory && (
-              <MetricCard
-                title="内存"
-                value={currentMetrics.appMemoryUsage}
-                unit="MB"
-                color="#8b5cf6"
-                current={currentMetrics.appMemoryPercent}
-                threshold={{
-                  warning: thresholds.memoryWarning,
-                  critical: thresholds.memoryCritical,
-                }}
-              />
-            )}
-            {monitorItems.gpu && (
-              <MetricCard
-                title="GPU"
-                value={currentMetrics.gpuLoad}
-                unit="%"
-                color="#f59e0b"
-              />
-            )}
-            {monitorItems.power && (
-              <MetricCard
-                title="功耗"
-                value={currentMetrics.powerConsumption}
-                unit="W"
-                color="#ef4444"
-                current={currentMetrics.powerConsumption}
-                threshold={{
-                  warning: thresholds.powerWarning,
-                  critical: thresholds.powerCritical,
-                }}
-              />
-            )}
-            {monitorItems.temperature && (
-              <MetricCard
-                title="温度"
-                value={currentMetrics.deviceTemperature}
-                unit="°C"
-                color="#f97316"
-                current={currentMetrics.deviceTemperature}
-                threshold={{
-                  warning: thresholds.temperatureWarning,
-                  critical: thresholds.temperatureCritical,
-                }}
-              />
-            )}
-          </div>
-
-          {/* 性能评分 */}
-          <div className="score-panel">
-            <h2>性能评分</h2>
-            <div className="score-content">
-              <div className="score-circle">
-                <svg width="120" height="120">
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="8"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke={
-                      currentMetrics.performanceScore.grade === "Excellent"
-                        ? "#10b981"
-                        : currentMetrics.performanceScore.grade === "Good"
-                          ? "#3b82f6"
-                          : "#f59e0b"
-                    }
-                    strokeWidth="8"
-                    strokeDasharray={`${currentMetrics.performanceScore.overall * 3.14} 314`}
-                    strokeLinecap="round"
-                    transform="rotate(-90 60 60)"
-                  />
-                </svg>
-                <div className="score-value">
-                  <div className="score-number">
-                    {currentMetrics.performanceScore.overall}
-                  </div>
-                  <div className="score-grade">
-                    {currentMetrics.performanceScore.grade}
-                  </div>
-                </div>
+    <div className="flex flex-col h-full">
+      <Tabs defaultValue="dashboard" className="flex-1 flex flex-col h-full">
+        {/* 顶部导航 */}
+        <div className="sticky top-0 z-10 border-b border-border/40 bg-background/95 backdrop-blur-sm">
+          <div className="px-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <TabsList>
+                  <TabsTrigger
+                    value="dashboard"
+                    className="text-xs px-3 gap-1.5"
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    监控面板
+                  </TabsTrigger>
+                  <TabsTrigger value="tasks" className="text-xs px-3  gap-1.5">
+                    <ListTodo className="h-3.5 w-3.5" />
+                    任务管理
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="scripts"
+                    className="text-xs px-3  gap-1.5"
+                  >
+                    <Package className="h-3.5 w-3.5" />
+                    脚本市场
+                  </TabsTrigger>
+                  <TabsTrigger value="config" className="text-xs px-3  gap-1.5">
+                    <Settings className="h-3.5 w-3.5" />
+                    监控配置
+                  </TabsTrigger>
+                </TabsList>
               </div>
-              <div className="score-details">
-                <div>FPS: {currentMetrics.performanceScore.fpsScore}</div>
-                <div>CPU: {currentMetrics.performanceScore.cpuScore}</div>
-                <div>内存: {currentMetrics.performanceScore.memoryScore}</div>
-                <div>
-                  温度: {currentMetrics.performanceScore.temperatureScore}
-                </div>
-                <div>功耗: {currentMetrics.performanceScore.powerScore}</div>
-              </div>
+              <Button
+                onClick={handleOpenTaskDialog}
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                新建任务
+              </Button>
             </div>
           </div>
-        </>
-      )}
-
-      {/* 实时图表 */}
-      {historyData.length > 0 && (
-        <div className="charts-section">
-          {renderChart("fps", "FPS (帧率)", "#10b981", "FPS")}
-          {renderChart("cpu", "CPU 使用率", "#3b82f6", "%")}
-          {renderChart("memory", "内存占用", "#8b5cf6", "MB")}
-          {renderChart("gpu", "GPU 负载", "#f59e0b", "%")}
-          {renderChart("power", "功耗", "#ef4444", "W")}
-          {renderChart("temperature", "温度", "#f97316", "°C")}
-
-          {monitorItems.network && (
-            <div className="chart-container">
-              <h3 className="chart-title">网络速率</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={historyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-                  <YAxis
-                    label={{
-                      value: "KB/s",
-                      angle: -90,
-                      position: "insideLeft",
-                    }}
-                  />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="networkUp"
-                    stroke="#06b6d4"
-                    name="上行"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="networkDown"
-                    stroke="#14b8a6"
-                    name="下行"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
         </div>
-      )}
 
-      {/* 告警列表 */}
-      {alerts.length > 0 && (
-        <div className="alerts-panel">
-          <h2>性能告警</h2>
-          {alerts.map((alert: any) => (
-            <div
-              key={alert.id}
-              className={`alert-item ${alert.level === "critical" ? "alert-critical" : "alert-warning"}`}
-            >
-              <span className="alert-icon">
-                {alert.level === "critical" ? "🚨" : "⚠️"}
-              </span>
-              <span className="alert-message">{alert.message}</span>
-              <span className="alert-time">
-                {new Date(alert.timestamp).toLocaleTimeString()}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+        {/* 主内容区 */}
+        <div className="flex-1 overflow-hidden p-1 mt-1">
+          <TabsContent value="dashboard" className="mt-0 h-full overflow-hidden">
+            <MonitoringDashboard
+              tasks={tasks}
+              onCreateTask={handleOpenTaskDialog}
+              onToggleTaskStatus={handleToggleTaskStatus}
+            />
+          </TabsContent>
 
-      {/* 统计摘要 */}
-      {statistics && (
-        <div className="statistics-panel">
-          <h2>性能统计摘要</h2>
-          <div className="statistics-grid">
-            {Object.entries(statistics).map(([key, values]: [string, any]) => (
-              <div key={key} className="stat-card">
-                <h3>{key.toUpperCase()}</h3>
-                <div className="stat-values">
-                  <div>
-                    <span>平均:</span> {values.avg.toFixed(2)}
-                  </div>
-                  <div>
-                    <span>最小:</span> {values.min.toFixed(2)}
-                  </div>
-                  <div>
-                    <span>最大:</span> {values.max.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <TabsContent value="tasks" className="mt-0">
+            <TaskManagement
+              tasks={tasks}
+              onViewTask={handleViewTask}
+              onToggleTaskStatus={handleToggleTaskStatus}
+              onDeleteTask={handleDeleteTask}
+            />
+          </TabsContent>
+
+          <TabsContent value="scripts" className="mt-0 h-full">
+            <ScriptMarket scripts={scripts} onSaveScript={handleSaveScript} />
+          </TabsContent>
+
+          <TabsContent value="config" className="mt-0 flex-1 overflow-auto">
+            <MonitoringConfigPanel
+              config={{
+                interval: monitorConfig.interval,
+                enableAlerts,
+                thresholds: alertThresholds,
+              }}
+              onConfigChange={(cfg) => {
+                setMonitorConfig({ interval: cfg.interval });
+                setAlertThresholds(cfg.thresholds);
+                setEnableAlerts(cfg.enableAlerts);
+              }}
+            />
+          </TabsContent>
         </div>
-      )}
+      </Tabs>
+
+      {/* 任务详情抽屉 */}
+      <TaskDetailSheet
+        open={showDetailSheet}
+        onOpenChange={setShowDetailSheet}
+        task={selectedTask}
+      />
+
+      {/* 新建任务对话框 */}
+      <CreateTaskDialog
+        open={openTaskDialog}
+        onOpenChange={setOpenTaskDialog}
+        scripts={scripts}
+        apps={apps}
+        formData={formData}
+        onFormDataChange={setFormData}
+        onCreateTask={handleCreateTask}
+      />
     </div>
   );
 }

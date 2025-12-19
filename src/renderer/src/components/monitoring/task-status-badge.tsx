@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface TaskStatusBadgeProps {
-  status: TaskStatus;
+  status: MonitorTaskStatus;
 }
 
 const statusConfig = {

@@ -1,24 +1,132 @@
-import { BrowserWindow } from "electron";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { getClient } from "./index";
 
-const execAsync = promisify(exec);
+/**
+ * SPDaemon 监控配置选项
+ */
+export interface SPDaemonOptions {
+  N: number; // 采样次数
+  PKG?: string; // 包名
+  cpu?: boolean;
+  gpu?: boolean;
+  fps?: boolean;
+  temperature?: boolean;
+  power?: boolean;
+  ram?: boolean;
+  net?: boolean;
+  ddr?: boolean;
+}
 
-// SPDaemon 类 (从之前的封装移植)
+/**
+ * 告警阈值配置
+ */
+export interface AlertThresholds {
+  fpsWarning?: number;
+  fpsCritical?: number;
+  cpuWarning?: number;
+  cpuCritical?: number;
+  memoryWarning?: number;
+  memoryCritical?: number;
+  temperatureWarning?: number;
+  temperatureCritical?: number;
+}
+
+/**
+ * SPDaemon 原始数据解析结果
+ */
+export interface SPDaemonRawData {
+  procAppName?: string;
+  timestamp?: number;
+  cpu?: {
+    procCpuUsage?: number;
+    totalCpuUsage?: number;
+    cores?: Array<{
+      coreId: number;
+      frequency?: number;
+      usage?: number;
+    }>;
+  };
+  gpu?: {
+    gpuLoad?: number;
+    gpuFrequency?: number;
+  };
+  memory?: {
+    pss?: number;
+    memTotal?: number;
+    memAvailable?: number;
+  };
+  fps?: {
+    fps?: number;
+    fpsJitters?: number[];
+    refreshRate?: number;
+  };
+  battery?: {
+    battery?: number;
+    currentNow?: number;
+    voltageNow?: number;
+    powerConsumption?: number;
+  };
+  temperature?: {
+    socThermal?: number;
+    shellBack?: number;
+  };
+  network?: {
+    networkDown?: number;
+    networkUp?: number;
+  };
+  rawData: Record<string, any>;
+}
+
+/**
+ * 计算后的监控指标
+ */
+export interface CalculatedMetrics {
+  packageName: string;
+  timestamp: number;
+  fps: number;
+  fpsStability: number;
+  appCpuUsage: number;
+  appMemoryUsage: number; // MB
+  appMemoryPercent: number;
+  gpuLoad: number;
+  powerConsumption: number;
+  networkUpSpeed: number; // KB/s
+  networkDownSpeed: number; // KB/s
+  deviceTemperature: number;
+  performanceScore: {
+    overall: number;
+    fpsScore: number;
+    cpuScore: number;
+    memoryScore: number;
+    temperatureScore: number;
+    powerScore: number;
+    grade: string;
+  };
+}
+
+/**
+ * 告警信息
+ */
+export interface Alert {
+  timestamp: number;
+  level: "warning" | "critical";
+  type: "fps" | "cpu" | "memory" | "temperature";
+  message: string;
+  value: number;
+  threshold: number;
+}
+
+/**
+ * SPDaemon 类：封装鸿蒙 SP_daemon 性能监控
+ */
 export class SPDaemon {
-  private shellCommand: string = "hdc shell";
-  private isMonitoring: boolean = false;
-  private monitorTimer?: NodeJS.Timeout;
-  private mainWindow?: BrowserWindow;
-  private lastNetworkData?: any;
+  private lastNetworkData?: { networkUp?: number; networkDown?: number };
   private lastTimestamp?: number;
 
-  constructor(mainWindow: BrowserWindow) {
-    this.mainWindow = mainWindow;
-  }
-
-  private buildCommand(options: any): string {
-    const params: string[] = [`${this.shellCommand} SP_daemon`];
+  /**
+   * 构建 SP_daemon 命令
+   */
+  private buildCommand(options: SPDaemonOptions): string {
+    const params: string[] = ["SP_daemon"];
     params.push(`-N ${options.N}`);
     if (options.PKG) params.push(`-PKG ${options.PKG}`);
     if (options.cpu) params.push("-c");
@@ -32,7 +140,10 @@ export class SPDaemon {
     return params.join(" ");
   }
 
-  private parseOutput(output: string): any {
+  /**
+   * 解析 SP_daemon 输出
+   */
+  parseOutput(output: string): SPDaemonRawData {
     const lines = output.split("\n");
     const rawData: Record<string, any> = {};
 
@@ -51,7 +162,11 @@ export class SPDaemon {
     }
 
     // 解析CPU核心
-    const cpuCores: any[] = [];
+    const cpuCores: Array<{
+      coreId: number;
+      frequency?: number;
+      usage?: number;
+    }> = [];
     let coreId = 0;
     while (rawData[`cpu${coreId}Frequency`] !== undefined) {
       cpuCores.push({
@@ -85,7 +200,7 @@ export class SPDaemon {
       cpu: {
         procCpuUsage: rawData.ProcCpuUsage,
         totalCpuUsage: rawData.TotalcpuUsage,
-        cores: cpuCores,
+        cores: cpuCores.length > 0 ? cpuCores : undefined,
       },
       gpu: {
         gpuLoad: rawData.gpuLoad,
@@ -119,7 +234,10 @@ export class SPDaemon {
     };
   }
 
-  private calculateMetrics(result: any): any {
+  /**
+   * 计算监控指标
+   */
+  calculateMetrics(result: SPDaemonRawData): CalculatedMetrics | null {
     if (!result.procAppName || !result.timestamp) return null;
 
     // FPS稳定性
@@ -143,7 +261,7 @@ export class SPDaemon {
     let networkUpSpeed = 0;
     let networkDownSpeed = 0;
     if (this.lastNetworkData && this.lastTimestamp) {
-      const timeDelta = (result.timestamp - this.lastTimestamp) / 1000;
+      const timeDelta = (result.timestamp! - this.lastTimestamp) / 1000;
       if (timeDelta > 0) {
         networkUpSpeed =
           ((result.network?.networkUp || 0) -
@@ -172,9 +290,9 @@ export class SPDaemon {
       ? ((result.memory.pss || 0) / result.memory.memTotal) * 100
       : 0;
 
-    const metrics = {
+    const metrics: CalculatedMetrics = {
       packageName: result.procAppName,
-      timestamp: result.timestamp,
+      timestamp: result.timestamp!,
       fps: result.fps?.fps || 0,
       fpsStability,
       appCpuUsage: result.cpu?.procCpuUsage || 0,
@@ -191,7 +309,18 @@ export class SPDaemon {
     return metrics;
   }
 
-  private calculatePerformanceScore(result: any): any {
+  /**
+   * 计算性能评分
+   */
+  private calculatePerformanceScore(result: SPDaemonRawData): {
+    overall: number;
+    fpsScore: number;
+    cpuScore: number;
+    memoryScore: number;
+    temperatureScore: number;
+    powerScore: number;
+    grade: string;
+  } {
     const fps = result.fps?.fps || 0;
     const fpsScore = Math.min(100, (fps / 60) * 100);
 
@@ -206,7 +335,7 @@ export class SPDaemon {
     const temps = [
       result.temperature?.socThermal,
       result.temperature?.shellBack,
-    ].filter((t: any) => t !== undefined) as number[];
+    ].filter((t) => t !== undefined) as number[];
     const avgTemp =
       temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 30;
     const temperatureScore = Math.max(
@@ -242,8 +371,14 @@ export class SPDaemon {
     };
   }
 
-  private checkAlerts(metrics: any, thresholds: any): any[] {
-    const alerts: any[] = [];
+  /**
+   * 检查告警
+   */
+  checkAlerts(
+    metrics: CalculatedMetrics,
+    thresholds: AlertThresholds,
+  ): Alert[] {
+    const alerts: Alert[] = [];
     const timestamp = metrics.timestamp;
 
     if (thresholds.fpsCritical && metrics.fps < thresholds.fpsCritical) {
@@ -292,75 +427,83 @@ export class SPDaemon {
       });
     }
 
+    if (
+      thresholds.memoryCritical &&
+      metrics.appMemoryPercent > thresholds.memoryCritical
+    ) {
+      alerts.push({
+        timestamp,
+        level: "critical",
+        type: "memory",
+        message: `严重: 内存使用率过高 (${metrics.appMemoryPercent.toFixed(1)}%)`,
+        value: metrics.appMemoryPercent,
+        threshold: thresholds.memoryCritical,
+      });
+    } else if (
+      thresholds.memoryWarning &&
+      metrics.appMemoryPercent > thresholds.memoryWarning
+    ) {
+      alerts.push({
+        timestamp,
+        level: "warning",
+        type: "memory",
+        message: `警告: 内存使用率偏高 (${metrics.appMemoryPercent.toFixed(1)}%)`,
+        value: metrics.appMemoryPercent,
+        threshold: thresholds.memoryWarning,
+      });
+    }
+
+    if (
+      thresholds.temperatureCritical &&
+      metrics.deviceTemperature > thresholds.temperatureCritical
+    ) {
+      alerts.push({
+        timestamp,
+        level: "critical",
+        type: "temperature",
+        message: `严重: 设备温度过高 (${metrics.deviceTemperature.toFixed(1)}°C)`,
+        value: metrics.deviceTemperature,
+        threshold: thresholds.temperatureCritical,
+      });
+    } else if (
+      thresholds.temperatureWarning &&
+      metrics.deviceTemperature > thresholds.temperatureWarning
+    ) {
+      alerts.push({
+        timestamp,
+        level: "warning",
+        type: "temperature",
+        message: `警告: 设备温度偏高 (${metrics.deviceTemperature.toFixed(1)}°C)`,
+        value: metrics.deviceTemperature,
+        threshold: thresholds.temperatureWarning,
+      });
+    }
+
     return alerts;
   }
 
-  async collect(options: any): Promise<any> {
+  /**
+   * 采集性能数据
+   */
+  async collect(
+    connectKey: string,
+    options: SPDaemonOptions,
+  ): Promise<SPDaemonRawData> {
     const command = this.buildCommand(options);
     try {
-      const { stdout, stderr } = await execAsync(command);
-      if (stderr) console.warn("SP_daemon stderr:", stderr);
-      return this.parseOutput(stdout);
+      const connection = await getClient().getTarget(connectKey).shell(command);
+      const output = await connection.readAll();
+      return this.parseOutput(output.toString("utf-8"));
     } catch (error) {
       throw new Error(`SP_daemon execution failed: ${error}`);
     }
   }
 
-  async startMonitor(packageName: string, config: any): Promise<void> {
-    if (this.isMonitoring) {
-      throw new Error("Monitor is already running");
-    }
-
-    const { interval = 1, thresholds = {}, enableAlerts = true } = config;
-
-    this.isMonitoring = true;
+  /**
+   * 重置网络数据统计（用于新的监控周期）
+   */
+  resetNetworkStats(): void {
     this.lastNetworkData = undefined;
     this.lastTimestamp = undefined;
-
-    const monitor = async () => {
-      if (!this.isMonitoring) return;
-
-      try {
-        const result = await this.collect({
-          N: 1,
-          PKG: packageName,
-          cpu: true,
-          gpu: true,
-          fps: true,
-          temperature: true,
-          power: true,
-          ram: true,
-          net: true,
-        });
-
-        const metrics = this.calculateMetrics(result);
-        if (metrics) {
-          this.mainWindow?.webContents.send("monitor:data", metrics);
-
-          if (enableAlerts) {
-            const alerts = this.checkAlerts(metrics, thresholds);
-            alerts.forEach((alert) => {
-              this.mainWindow?.webContents.send("monitor:alert", alert);
-            });
-          }
-        }
-      } catch (error) {
-        this.mainWindow?.webContents.send("monitor:error", {
-          error: String(error),
-        });
-      }
-
-      this.monitorTimer = setTimeout(monitor, interval * 1000);
-    };
-
-    monitor();
-  }
-
-  stopMonitor(): void {
-    this.isMonitoring = false;
-    if (this.monitorTimer) {
-      clearTimeout(this.monitorTimer);
-      this.monitorTimer = undefined;
-    }
   }
 }

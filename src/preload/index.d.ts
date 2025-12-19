@@ -139,15 +139,23 @@ interface Api {
   onScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
   offScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
 
+  listTasks: () => Promise<SceneTask[]>
+  createTask: (task: SceneTaskConfig) => Promise<SceneTask>
+  removeTask: (taskId: string) => Promise<{ success: boolean }>
+  startTask: (taskId: string) => Promise<{ success: boolean }>
+  stopTask: (taskId: string) => Promise<{ success: boolean }>
+  getTaskMetrics: (taskId: string) => Promise<MonitorSample[]>
+  listScriptTemplates: () => Promise<
+      {
+        id: string
+        name: string
+        description?: string
+      }[]
+  >
 
-  startMonitor: (packageName: string, config: MonitorConfig) => Promise<{ success: boolean; error?: string }>;
-  stopMonitor: () => Promise<{ success: boolean; error?: string }>;
-  collectOnce: (options: CollectOptions) => Promise<{ success: boolean; data?: any; error?: string }>;
-
-  onData: (callback: (data: any) => void) => void;
-  onAlert: (callback: (alert: any) => void) => void;
-  onError: (callback: (error: any) => void) => void;
-  removeListener: (channel: string) => void;
+  onMonitorData: (handler: (sample: MonitorSample) => void) => () => void
+  onMonitorAlert: (handler: (alert: MonitorAlert) => void) => () => void
+  onMonitorError: (handler: (error: { taskId?: string; error: string }) => void) => () => void
 }
 
 declare global {

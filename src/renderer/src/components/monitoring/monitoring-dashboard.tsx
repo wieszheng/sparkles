@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Square, Zap } from "lucide-react";
 
 import { MonitoringChart } from "./monitoring-chart";
@@ -6,14 +7,12 @@ import { TaskStatusBadge } from "./task-status-badge";
 
 interface MonitoringDashboardProps {
   tasks: MonitoringTask[];
-  monitorConfig: MonitorConfig;
   onCreateTask: () => void;
   onToggleTaskStatus: (id: number) => void;
 }
 
 export function MonitoringDashboard({
   tasks,
-  monitorConfig,
   onCreateTask,
   onToggleTaskStatus,
 }: MonitoringDashboardProps) {
@@ -40,10 +39,11 @@ export function MonitoringDashboard({
   }
 
   return (
-    <div className="space-y-4">
-      {runningTasks.map((task) => (
-        <div key={task.id} className="space-y-3">
-          <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full">
+      {/* 固定控制区 */}
+      <div className="flex-shrink-0 space-y-3 pb-3 border-b border-border/40">
+        {runningTasks.map((task) => (
+          <div key={task.id} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="relative h-2 w-2">
                 <div className="absolute inset-0 rounded-full bg-emerald-500 animate-pulse" />
@@ -67,30 +67,36 @@ export function MonitoringDashboard({
               </Button>
             </div>
           </div>
+        ))}
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {Object.entries(monitorConfig).map(([key, enabled]) => {
-              if (
-                key === "interval" ||
-                !enabled ||
-                !task.data?.[key as keyof typeof task.data]
-              )
-                return null;
-              return (
-                <div
-                  key={key}
-                  className="rounded-md border border-border/30 bg-muted/20 p-3"
-                >
-                  <MonitoringChart
-                    metricKey={key}
-                    data={task.data[key as keyof typeof task.data]}
-                  />
+      {/* 可滚动图表区 */}
+      <div className="flex-1 min-h-0 pt-3">
+        <ScrollArea className="h-full">
+          <div className="space-y-4 mr-3">
+            {runningTasks.map((task) => (
+              <div key={task.id} className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {task.data &&
+                    Object.entries(task.data).map(([key, data]) => {
+                      if (!data || !Array.isArray(data) || data.length === 0)
+                        return null;
+                      console.log("key", key);
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-md border border-border/30 bg-muted/20 p-3"
+                        >
+                          <MonitoringChart metricKey={key} data={data} />
+                        </div>
+                      );
+                    })}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
+        </ScrollArea>
+      </div>
     </div>
   );
 }

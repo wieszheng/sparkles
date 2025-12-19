@@ -1,83 +1,458 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, FileCode, Code2, Save } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  Code2,
+  Save,
+  Star,
+  Download,
+  User,
+  Tag,
+  Filter,
+  FileCode,
+  Eye,
+  Package,
+} from "lucide-react";
 
-interface ScriptEditorProps {
+interface ScriptMarketProps {
   scripts: ScriptFile[];
   onSaveScript: (id: number, content: string) => void;
 }
 
-export function ScriptEditor({ scripts, onSaveScript }: ScriptEditorProps) {
-  const [editingScript, setEditingScript] = useState<ScriptFile | null>(null);
+export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("popular");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedScript, setSelectedScript] = useState<ScriptFile | null>(null);
   const [scriptContent, setScriptContent] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
-  const handleEditScript = (script: ScriptFile) => {
-    setEditingScript(script);
+  const categories = [
+    { value: "all", label: "全部" },
+    { value: "auth", label: "认证授权" },
+    { value: "payment", label: "支付功能" },
+    { value: "cart", label: "购物车" },
+    { value: "search", label: "搜索功能" },
+    { value: "form", label: "表单验证" },
+    { value: "other", label: "其他" },
+  ];
+
+  const difficulties = [
+    { value: "all", label: "全部" },
+    { value: "beginner", label: "初级" },
+    { value: "intermediate", label: "中级" },
+    { value: "advanced", label: "高级" },
+  ];
+
+  const sortOptions = [
+    { value: "popular", label: "热门" },
+    { value: "newest", label: "最新" },
+    { value: "rating", label: "评分" },
+    { value: "downloads", label: "下载量" },
+  ];
+
+  const filteredScripts = scripts
+    .filter((script) => {
+      const matchesSearch =
+        script.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        script.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        script.tags.some((tag) =>
+          tag.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
+      const matchesCategory =
+        selectedCategory === "all" || script.category === selectedCategory;
+      const matchesDifficulty =
+        selectedDifficulty === "all" ||
+        script.difficulty === selectedDifficulty;
+      return matchesSearch && matchesCategory && matchesDifficulty;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "rating":
+          return b.rating - a.rating;
+        case "downloads":
+          return b.downloads - a.downloads;
+        case "newest":
+          return (
+            new Date(b.lastModified).getTime() -
+            new Date(a.lastModified).getTime()
+          );
+        default:
+          return b.downloads - a.downloads;
+      }
+    });
+
+  const handleViewScript = (script: ScriptFile) => {
+    setSelectedScript(script);
     setScriptContent(script.content);
+    setShowPreview(true);
   };
 
-  const handleSaveScript = () => {
-    if (editingScript) {
-      onSaveScript(editingScript.id, scriptContent);
-      setEditingScript(null);
-      setScriptContent("");
+  const handleUseScript = (script: ScriptFile) => {
+    setSelectedScript(script);
+    setScriptContent(script.content);
+    setShowPreview(false);
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "beginner":
+        return "bg-green-100 text-green-700 border-green-200";
+      case "intermediate":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "advanced":
+        return "bg-red-100 text-red-700 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      auth: "bg-blue-100 text-blue-700 border-blue-200",
+      payment: "bg-purple-100 text-purple-700 border-purple-200",
+      cart: "bg-green-100 text-green-700 border-green-200",
+      search: "bg-orange-100 text-orange-700 border-orange-200",
+      form: "bg-pink-100 text-pink-700 border-pink-200",
+      other: "bg-gray-100 text-gray-700 border-gray-200",
+    };
+    return colors[category] || colors.other;
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-140px)]">
-      {/* 脚本列表 */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-foreground">脚本文件</h2>
-          <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2">
-            <Plus className="h-3 w-3" />
-            新建
-          </Button>
-        </div>
-        <div className="space-y-1.5">
-          {scripts.map((script) => (
-            <button
-              key={script.id}
-              onClick={() => handleEditScript(script)}
-              className={`w-full text-left rounded-md border p-2.5 transition-colors ${
-                editingScript?.id === script.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border/30 hover:border-border/50 bg-muted/10"
-              }`}
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* 固定搜索和筛选区域 */}
+      <div className="flex-shrink-0 space-y-3 pb-3 border-b border-border/30">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索脚本名称、描述或标签..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-28 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1 bg-muted/30 rounded-md p-1">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="h-7 w-7 p-0"
             >
-              <div className="flex items-center gap-1.5">
-                <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-medium text-xs">{script.label}</span>
-              </div>
-              <div className="flex items-center justify-between mt-1.5 text-[10px] text-muted-foreground">
-                <span>{script.name}</span>
-                <span>{script.lastModified}</span>
-              </div>
-            </button>
-          ))}
+              <Package className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="h-7 w-7 p-0"
+            >
+              <FileCode className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">筛选:</span>
+          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-32 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={selectedDifficulty}
+            onValueChange={setSelectedDifficulty}
+          >
+            <SelectTrigger className="w-28 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {difficulties.map((difficulty) => (
+                <SelectItem key={difficulty.value} value={difficulty.value}>
+                  {difficulty.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="text-xs text-muted-foreground">
+            共找到 {filteredScripts.length} 个脚本
+          </div>
         </div>
       </div>
 
-      {/* 代码编辑器 */}
-      <div className="lg:col-span-3 rounded-md border border-border/30 bg-muted/10 overflow-hidden flex flex-col">
-        {editingScript ? (
-          <>
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/20">
-              <div className="flex items-center gap-1.5">
-                <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium">
-                  {editingScript.name}
+      {/* 脚本列表/网格 - 可滚动区域 */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="py-4 mr-3.5">
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredScripts.map((script) => (
+                <div
+                  key={script.id}
+                  className="bg-card/50 rounded-lg border border-border/30 p-4 hover:border-primary/50 transition-all hover:shadow-sm"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold">
+                          {script.label}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {script.description}
+                        </p>
+                      </div>
+                      <Badge
+                        className={`text-[10px] ${getDifficultyColor(script.difficulty)}`}
+                      >
+                        {script.difficulty === "beginner"
+                          ? "初级"
+                          : script.difficulty === "intermediate"
+                            ? "中级"
+                            : "高级"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`text-[10px] ${getCategoryColor(script.category)}`}
+                      >
+                        {
+                          categories.find((c) => c.value === script.category)
+                            ?.label
+                        }
+                      </Badge>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        {script.rating}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Download className="h-3 w-3" />
+                        {script.downloads}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {script.author}
+                      </div>
+                      <div>{script.lastModified}</div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {script.tags.slice(0, 3).map((tag) => (
+                        <div
+                          key={tag}
+                          className="flex items-center gap-1 text-[10px] text-muted-foreground"
+                        >
+                          <Tag className="h-2.5 w-2.5" />
+                          {tag}
+                        </div>
+                      ))}
+                      {script.tags.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          +{script.tags.length - 3}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewScript(script)}
+                        className="flex-1 h-7 text-xs gap-1"
+                      >
+                        <Eye className="h-3 w-3" />
+                        预览
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUseScript(script)}
+                        className="flex-1 h-7 text-xs"
+                      >
+                        使用脚本
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredScripts.map((script) => (
+                <div
+                  key={script.id}
+                  className="bg-card/50 rounded-lg border border-border/30 p-4 hover:border-primary/50 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-semibold">
+                          {script.label}
+                        </h3>
+                        <Badge
+                          className={`text-[10px] ${getDifficultyColor(script.difficulty)}`}
+                        >
+                          {script.difficulty === "beginner"
+                            ? "初级"
+                            : script.difficulty === "intermediate"
+                              ? "中级"
+                              : "高级"}
+                        </Badge>
+                        <Badge
+                          className={`text-[10px] ${getCategoryColor(script.category)}`}
+                        >
+                          {
+                            categories.find((c) => c.value === script.category)
+                              ?.label
+                          }
+                        </Badge>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        {script.description}
+                      </p>
+
+                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {script.author}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          {script.rating}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Download className="h-3 w-3" />
+                          {script.downloads}
+                        </div>
+                        <div>{script.lastModified}</div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {script.tags.map((tag) => (
+                          <div
+                            key={tag}
+                            className="flex items-center gap-1 bg-muted/30 rounded px-2 py-1 text-[10px]"
+                          >
+                            <Tag className="h-2.5 w-2.5" />
+                            {tag}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewScript(script)}
+                        className="h-8 text-xs gap-1"
+                      >
+                        <Eye className="h-3 w-3" />
+                        预览
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUseScript(script)}
+                        className="h-8 text-xs"
+                      >
+                        使用脚本
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* 脚本预览/编辑对话框 */}
+      {showPreview && selectedScript && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border/30">
+              <div className="flex items-center gap-2">
+                <Code2 className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {selectedScript.label}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowPreview(false);
+                  setSelectedScript(null);
+                  setScriptContent("");
+                }}
+              >
+                关闭
+              </Button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="bg-muted/30 rounded-md p-4 text-xs font-mono overflow-auto">
+                {scriptContent}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 脚本编辑界面 */}
+      {!showPreview && selectedScript && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border/30">
+              <div className="flex items-center gap-2">
+                <Code2 className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  编辑脚本: {selectedScript.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="h-6 text-xs px-2"
                   onClick={() => {
-                    setEditingScript(null);
+                    setSelectedScript(null);
                     setScriptContent("");
                   }}
                 >
@@ -85,8 +460,12 @@ export function ScriptEditor({ scripts, onSaveScript }: ScriptEditorProps) {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleSaveScript}
-                  className="h-6 text-xs gap-1 px-2"
+                  onClick={() => {
+                    onSaveScript(selectedScript.id, scriptContent);
+                    setSelectedScript(null);
+                    setScriptContent("");
+                  }}
+                  className="gap-1"
                 >
                   <Save className="h-3 w-3" />
                   保存
@@ -96,20 +475,12 @@ export function ScriptEditor({ scripts, onSaveScript }: ScriptEditorProps) {
             <Textarea
               value={scriptContent}
               onChange={(e) => setScriptContent(e.target.value)}
-              className="flex-1 min-h-0 rounded-none border-0 font-mono text-xs resize-none focus-visible:ring-0"
-              placeholder="// 编写你的自动化脚本..."
+              className="flex-1 resize-none border-0 rounded-none font-mono text-xs focus-visible:ring-0 p-4"
+              placeholder="// 在这里编辑你的脚本..."
             />
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center flex-1 text-center p-4">
-            <FileCode className="h-8 w-8 text-muted-foreground/30 mb-2" />
-            <h3 className="text-xs font-medium mb-0.5">选择一个脚本</h3>
-            <p className="text-[10px] text-muted-foreground">
-              从左侧列表中选择脚本进行编辑
-            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,14 +13,12 @@ interface TaskDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: MonitoringTask | null;
-  monitorConfig: MonitorConfig;
 }
 
 export function TaskDetailSheet({
   open,
   onOpenChange,
   task,
-  monitorConfig,
 }: TaskDetailSheetProps) {
   if (!task) return null;
 
@@ -75,25 +73,19 @@ export function TaskDetailSheet({
             <div className="space-y-3">
               <h3 className="text-xs font-semibold">监控数据</h3>
               <div className="grid grid-cols-1 gap-3">
-                {Object.entries(monitorConfig).map(([key, enabled]) => {
-                  if (
-                    key === "interval" ||
-                    !enabled ||
-                    !task.data?.[key as keyof typeof task.data]
-                  )
-                    return null;
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-md border border-border/30 bg-muted/20 p-3"
-                    >
-                      <MonitoringChart
-                        metricKey={key}
-                        data={task.data[key as keyof typeof task.data]}
-                      />
-                    </div>
-                  );
-                })}
+                {task.data &&
+                  Object.entries(task.data).map(([key, data]) => {
+                    if (!data || !Array.isArray(data) || data.length === 0)
+                      return null;
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-md border border-border/30 bg-muted/20 p-3"
+                      >
+                        <MonitoringChart metricKey={key} data={data} />
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}

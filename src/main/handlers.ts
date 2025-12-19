@@ -27,6 +27,17 @@ import { startCaptureScreen, stopCaptureScreen } from "./hdc/uitest";
 import fs from "fs-extra";
 import { File, FormData } from "formdata-node";
 import path from "path";
+import { listScriptTemplates } from "./hdc/engine.ts";
+import {
+  createTask,
+  getAllTasks,
+  getTask,
+  removeTask,
+  startTask,
+  stopTask,
+  updateTaskStatus,
+} from "./hdc/task.ts";
+import { taskMetrics } from "./hdc/monitor.ts";
 
 const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
@@ -648,5 +659,47 @@ export function initIpcHandlers(): void {
       log.error("文件读取失败:", error);
       return { success: false };
     }
+  });
+
+  // ---- 任务管理 IPC ----
+  ipcMain.handle("task:list", () => {
+    return getAllTasks();
+  });
+
+  ipcMain.handle("task:create", (_event, payload: SceneTaskConfig) => {
+    return createTask(payload);
+  });
+
+  ipcMain.handle("task:remove", (_event, taskId: string) => {
+    const success = removeTask(taskId);
+    return { success };
+  });
+
+  ipcMain.handle(
+    "task:updateStatus",
+    (_event, taskId: string, status: SceneTaskStatus) => {
+      const success = updateTaskStatus(taskId, status);
+      const task = getTask(taskId);
+      return { success, task };
+    },
+  );
+
+  // 启动 / 停止任务：同时启动监控与场景脚本
+  ipcMain.handle("task:start", (_event, taskId: string) => {
+    return startTask(taskId);
+  });
+
+  ipcMain.handle("task:stop", (_event, taskId: string) => {
+    return stopTask(taskId);
+  });
+
+  // 查询指定任务的监控历史数据（用于任务执行数据回显）
+  ipcMain.handle("task:metrics", (_event, taskId: string) => {
+    return taskMetrics.get(taskId) ?? [];
+  });
+
+  // 脚本模板管理：列出所有已注册的脚本模板
+  ipcMain.handle("script:list", () => {
+    return listScriptTemplates();
   });
 }

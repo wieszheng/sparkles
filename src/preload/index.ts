@@ -169,35 +169,59 @@ const api = {
     ) => void,
   ) => ipcRenderer.removeListener("screencast", callback),
 
-  // 启动监控
-  startMonitor: (packageName: string, config: any) =>
-    ipcRenderer.invoke("monitor:start", { packageName, config }),
-
-  // 停止监控
-  stopMonitor: () => ipcRenderer.invoke("monitor:stop"),
-
-  // 单次采集
-  collectOnce: (options: any) =>
-    ipcRenderer.invoke("monitor:collect-once", options),
-
-  // 监听数据事件
-  onData: (callback: (data: any) => void) => {
-    ipcRenderer.on("monitor:data", (_, data) => callback(data));
+  listTasks: () => ipcRenderer.invoke("task:list"),
+  createTask: (task: SceneTaskConfig) =>
+    ipcRenderer.invoke("task:create", task),
+  removeTask: (taskId: string) => ipcRenderer.invoke("task:remove", taskId),
+  startTask: async (taskId: string) => {
+    const res = await ipcRenderer.invoke("task:start", taskId);
+    return { success: !!res?.success };
   },
-
-  // 监听告警事件
-  onAlert: (callback: (alert: any) => void) => {
-    ipcRenderer.on("monitor:alert", (_, alert) => callback(alert));
+  stopTask: async (taskId: string) => {
+    const res = await ipcRenderer.invoke("task:stop", taskId);
+    return { success: !!res?.success };
   },
+  getTaskMetrics: (taskId: string) =>
+    ipcRenderer.invoke("task:metrics", taskId),
+  listScriptTemplates: () => ipcRenderer.invoke("script:list"),
 
-  // 监听错误事件
-  onError: (callback: (error: any) => void) => {
-    ipcRenderer.on("monitor:error", (_, error) => callback(error));
+  onMonitorData: (handler: (sample: MonitorSample) => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      sample: MonitorSample,
+    ) => {
+      handler(sample);
+    };
+    ipcRenderer.on("monitor:data", listener);
+    return () => {
+      ipcRenderer.removeListener("monitor:data", listener);
+    };
   },
-
-  // 移除监听器
-  removeListener: (channel: string) => {
-    ipcRenderer.removeAllListeners(channel);
+  onMonitorAlert: (handler: (alert: MonitorAlert) => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      alert: MonitorAlert,
+    ) => {
+      handler(alert);
+    };
+    ipcRenderer.on("monitor:alert", listener);
+    return () => {
+      ipcRenderer.removeListener("monitor:alert", listener);
+    };
+  },
+  onMonitorError: (
+    handler: (error: { taskId?: string; error: string }) => void,
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      error: { taskId?: string; error: string },
+    ) => {
+      handler(error);
+    };
+    ipcRenderer.on("monitor:error", listener);
+    return () => {
+      ipcRenderer.removeListener("monitor:error", listener);
+    };
   },
 };
 
