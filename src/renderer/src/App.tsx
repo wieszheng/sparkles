@@ -135,6 +135,7 @@ function Main() {
           console.log("Received targets:", targets);
           setDevices(targets);
           setSelectedDeviceId(targets[0]?.key || "");
+          window.api.selectDevice(targets[0]?.key || "");
         });
       }
     });
@@ -654,7 +655,10 @@ function Main() {
                         <>
                           <Select
                             value={selectedDeviceId}
-                            onValueChange={setSelectedDeviceId}
+                            onValueChange={(value) => {
+                              setSelectedDeviceId(value);
+                              window.api.selectDevice(value);
+                            }}
                           >
                             <SelectTrigger className="w-[170px] border-none dark:bg-background dark:hover:bg-background">
                               <SelectValue placeholder="暂无设备" />

@@ -5,6 +5,7 @@ import {
   type CalculatedMetrics,
   type AlertThresholds,
 } from "./sp-daemon";
+import { persistMonitorSample } from "./persistence";
 
 // 监控运行时状态
 const monitoringTimers = new Map<string, NodeJS.Timeout>();
@@ -39,7 +40,7 @@ export async function collectMetricsForTask(
   try {
     // 使用 SP_daemon 采集性能数据
     console.log("collectMetricsForTask", task.packageName, task.metrics);
-    const rawData = await spDaemon.collect(task.connectKey, {
+    const rawData = await spDaemon.collect({
       N: 1,
       PKG: task.packageName,
       cpu: task.metrics.includes("cpu"),
@@ -166,6 +167,9 @@ export function startMonitoring(
           });
         }
       }
+
+      // 异步持久化到 FastAPI（不阻塞采样循环）
+      void persistMonitorSample(task, sample);
     } catch (error) {
       console.error("collect metrics error", error);
       if (mainWindow) {

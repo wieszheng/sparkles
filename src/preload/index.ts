@@ -90,10 +90,8 @@ const api = {
   // 文件对话框API
   getDirectoryFiles: (directoryPath: string, extension?: string) =>
     ipcRenderer.invoke("get-directory-files", directoryPath, extension),
-  openFileDialog: (options: any) =>
-    ipcRenderer.invoke("open-file-dialog", options),
-  showSaveDialog: (options: any) =>
-    ipcRenderer.invoke("show-save-dialog", options),
+  openFileDialog: (options) => ipcRenderer.invoke("open-file-dialog", options),
+  showSaveDialog: (options) => ipcRenderer.invoke("show-save-dialog", options),
 
   // 文件操作API
   saveFile: (filePath: string, data: ArrayBuffer) =>
@@ -103,14 +101,14 @@ const api = {
   readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
 
   // 工作流执行相关API
-  executeWorkflow: (nodes: any[], edges: any[], connectKey: string) =>
+  executeWorkflow: (nodes, edges, connectKey: string) =>
     ipcRenderer.invoke("execute-workflow", nodes, edges, connectKey),
 
   stopWorkflow: () => ipcRenderer.invoke("stop-workflow"),
 
   getWorkflowContext: () => ipcRenderer.invoke("get-workflow-context"),
   // 监听工作流上下文更新
-  onWorkflowContextUpdate: (callback: (context: any) => void) =>
+  onWorkflowContextUpdate: (callback: (context) => void) =>
     ipcRenderer.on("workflow-context-update", (_event, context) =>
       callback(context),
     ),
@@ -118,19 +116,15 @@ const api = {
   removeWorkflowContextListener: (callback) =>
     ipcRenderer.removeListener("workflow-context-update", callback),
   // 单节点执行API
-  executeSingleNode: (node: any, connectKey: string) =>
+  executeSingleNode: (node, connectKey: string) =>
     ipcRenderer.invoke("execute-single-node", node, connectKey),
 
   // 测试用例执行API
-  executeTestCase: (testCase: any, connectKey: string) =>
+  executeTestCase: (testCase, connectKey: string) =>
     ipcRenderer.invoke("execute-test-case", testCase, connectKey),
 
   // 批量执行测试用例API
-  executeBatchTestCases: (
-    testCases: any[],
-    connectKey: string,
-    options?: any,
-  ) =>
+  executeBatchTestCases: (testCases, connectKey: string, options) =>
     ipcRenderer.invoke(
       "execute-batch-test-cases",
       testCases,
@@ -173,6 +167,8 @@ const api = {
   createTask: (task: SceneTaskConfig) =>
     ipcRenderer.invoke("task:create", task),
   removeTask: (taskId: string) => ipcRenderer.invoke("task:remove", taskId),
+  archiveTask: (taskId: string, archived: boolean) =>
+    ipcRenderer.invoke("task:archive", taskId, archived),
   startTask: async (taskId: string) => {
     const res = await ipcRenderer.invoke("task:start", taskId);
     return { success: !!res?.success };
@@ -184,7 +180,43 @@ const api = {
   getTaskMetrics: (taskId: string) =>
     ipcRenderer.invoke("task:metrics", taskId),
   listScriptTemplates: () => ipcRenderer.invoke("script:list"),
+  getScriptTemplate: (templateId: string) =>
+    ipcRenderer.invoke("script:get", templateId),
+  createScriptTemplate: (payload: {
+    id: string;
+    name: string;
+    description?: string;
+    code: string;
+  }) => ipcRenderer.invoke("script:create", payload),
+  updateScriptTemplate: (
+    templateId: string,
+    payload: { name?: string; description?: string; code?: string },
+  ) => ipcRenderer.invoke("script:update", templateId, payload),
+  deleteScriptTemplate: (templateId: string) =>
+    ipcRenderer.invoke("script:delete", templateId),
 
+  downloadScript: (templateId: string) =>
+    ipcRenderer.invoke("script:download", templateId),
+  isScriptDownloaded: (templateId: string) =>
+    ipcRenderer.invoke("script:isDownloaded", templateId),
+  getDownloadedScripts: () => ipcRenderer.invoke("script:getDownloaded"),
+  loadMonitoringConfig: () => ipcRenderer.invoke("monitoring:config:load"),
+  saveMonitoringConfig: (config: any) =>
+    ipcRenderer.invoke("monitoring:config:save", config),
+  resetMonitoringConfig: () => ipcRenderer.invoke("monitoring:config:reset"),
+
+  selectDevice: (deviceKey: string | null) =>
+    ipcRenderer.invoke("device:select", deviceKey),
+
+  onDeviceChange: (handler: () => void) => {
+    const listener = () => {
+      handler();
+    };
+    ipcRenderer.on("device:change", listener);
+    return () => {
+      ipcRenderer.removeListener("device:change", listener);
+    };
+  },
   onMonitorData: (handler: (sample: MonitorSample) => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,

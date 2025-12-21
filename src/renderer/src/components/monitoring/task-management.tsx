@@ -24,6 +24,8 @@ import {
   Play,
   Trash2,
   ListTodo,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 
 import { TaskStatusBadge } from "./task-status-badge";
@@ -33,6 +35,7 @@ interface TaskManagementProps {
   onViewTask: (task: MonitoringTask) => void;
   onToggleTaskStatus: (id: number) => void;
   onDeleteTask: (id: number) => void;
+  onArchiveTask: (id: number, archived: boolean) => void;
 }
 
 export function TaskManagement({
@@ -40,6 +43,7 @@ export function TaskManagement({
   onViewTask,
   onToggleTaskStatus,
   onDeleteTask,
+  onArchiveTask,
 }: TaskManagementProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -58,17 +62,17 @@ export function TaskManagement({
       {/* 搜索和筛选 */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="搜索任务..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-8"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[120px] h-8 text-xs">
-            <Filter className="h-3.5 w-3.5 mr-1.5" />
+          <SelectTrigger className="w-[140px]">
+            <Filter className="h-4 w-4" />
             <SelectValue placeholder="状态" />
           </SelectTrigger>
           <SelectContent>
@@ -113,26 +117,46 @@ export function TaskManagement({
                     <Eye className="h-3.5 w-3.5 mr-2" />
                     查看详情
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onToggleTaskStatus(task.id)}>
-                    {task.status === "running" ? (
-                      <>
-                        <Pause className="h-3.5 w-3.5 mr-2" />
-                        暂停任务
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-3.5 w-3.5 mr-2" />
-                        启动任务
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onDeleteTask(task.id)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" />
-                    删除
-                  </DropdownMenuItem>
+                  {!task.archived && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => onToggleTaskStatus(task.id)}
+                      >
+                        {task.status === "running" ? (
+                          <>
+                            <Pause className="h-3.5 w-3.5 mr-2" />
+                            暂停任务
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-3.5 w-3.5 mr-2" />
+                            启动任务
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onDeleteTask(task.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        删除
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onArchiveTask(task.id, true)}
+                      >
+                        <Archive className="h-3.5 w-3.5 mr-2" />
+                        归档
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {task.archived && (
+                    <DropdownMenuItem
+                      onClick={() => onArchiveTask(task.id, false)}
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5 mr-2" />
+                      取消归档
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -149,12 +173,10 @@ export function TaskManagement({
                 <span>创建</span>
                 <span>{task.createdAt}</span>
               </div>
-              {task.startTime && (
-                <div className="flex items-center justify-between">
-                  <span>开始</span>
-                  <span>{task.startTime}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <span>开始</span>
+                <span>{task.startTime}</span>
+              </div>
             </div>
 
             <div className="mt-2 pt-2 border-t border-border/20 flex items-center justify-between">

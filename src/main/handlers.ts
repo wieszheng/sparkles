@@ -6,6 +6,7 @@ import {
   getWorkflowExecutor,
   installApp,
   screencap,
+  setSelectedDevice,
   startScreenRecording,
   stopScreenRecording,
 } from "./hdc";
@@ -27,7 +28,14 @@ import { startCaptureScreen, stopCaptureScreen } from "./hdc/uitest";
 import fs from "fs-extra";
 import { File, FormData } from "formdata-node";
 import path from "path";
-import { listScriptTemplates } from "./hdc/engine.ts";
+import {
+  downloadScriptToLocal,
+  getDownloadedScripts,
+  getScriptTemplate,
+  isScriptDownloaded,
+  listScriptTemplates,
+  loadScriptTemplate,
+} from "./hdc/engine.ts";
 import {
   createTask,
   getAllTasks,
@@ -38,6 +46,18 @@ import {
   updateTaskStatus,
 } from "./hdc/task.ts";
 import { taskMetrics } from "./hdc/monitor.ts";
+import {
+  archiveTask,
+  deleteScriptTemplate,
+  fetchTaskMetrics,
+  persistScriptTemplate,
+  updateScriptTemplate,
+} from "./hdc/persistence.ts";
+import {
+  loadMonitoringConfig,
+  resetMonitoringConfig,
+  saveMonitoringConfig,
+} from "./hdc/monitoring-config.ts";
 
 const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
@@ -662,44 +682,146 @@ export function initIpcHandlers(): void {
   });
 
   // ---- 任务管理 IPC ----
-  ipcMain.handle("task:list", () => {
-    return getAllTasks();
+  ipcMain.handle("task:list", async () => {
+    return await getAllTasks();
   });
 
-  ipcMain.handle("task:create", (_event, payload: SceneTaskConfig) => {
-    return createTask(payload);
+  ipcMain.handle("task:create", async (_event, payload: SceneTaskConfig) => {
+    return await createTask(payload);
   });
 
-  ipcMain.handle("task:remove", (_event, taskId: string) => {
-    const success = removeTask(taskId);
+  ipcMain.handle("task:remove", async (_event, taskId: string) => {
+    const success = await removeTask(taskId);
     return { success };
   });
 
   ipcMain.handle(
+    "task:archive",
+    async (_event, taskId: string, archived: boolean) => {
+      const success = await archiveTask(taskId, archived);
+      return { success };
+    },
+  );
+
+  ipcMain.handle(
     "task:updateStatus",
-    (_event, taskId: string, status: SceneTaskStatus) => {
+    async (_event, taskId: string, status: SceneTaskStatus) => {
       const success = updateTaskStatus(taskId, status);
-      const task = getTask(taskId);
+      const task = await getTask(taskId);
       return { success, task };
     },
   );
 
   // 启动 / 停止任务：同时启动监控与场景脚本
-  ipcMain.handle("task:start", (_event, taskId: string) => {
-    return startTask(taskId);
+  ipcMain.handle("task:start", async (_event, taskId: string) => {
+    return await startTask(taskId);
   });
 
-  ipcMain.handle("task:stop", (_event, taskId: string) => {
-    return stopTask(taskId);
+  ipcMain.handle("task:stop", async (_event, taskId: string) => {
+    return await stopTask(taskId);
   });
-
   // 查询指定任务的监控历史数据（用于任务执行数据回显）
-  ipcMain.handle("task:metrics", (_event, taskId: string) => {
+  ipcMain.handle("task:metrics", async (_event, taskId: string) => {
+    // 优先从 FastAPI 获取历史数据
+    try {
+      const metrics = await fetchTaskMetrics(taskId, 1000);
+      if (metrics.length > 0) {
+        return metrics;
+      }
+    } catch (error) {
+      console.warn(
+        "[main] failed to fetch metrics from FastAPI, using memory cache",
+        error,
+      );
+    }
+    // 降级：如果 FastAPI 没有数据，返回内存中的数据
     return taskMetrics.get(taskId) ?? [];
   });
 
-  // 脚本模板管理：列出所有已注册的脚本模板
-  ipcMain.handle("script:list", () => {
-    return listScriptTemplates();
+  // 脚本模板管理：列出所有脚本模板（从 FastAPI）
+  ipcMain.handle("script:list", async () => {
+    return await listScriptTemplates();
+  });
+
+  // 获取单个脚本模板
+  ipcMain.handle("script:get", async (_event, templateId: string) => {
+    return await getScriptTemplate(templateId);
+  });
+
+  // 创建脚本模板
+  ipcMain.handle(
+    "script:create",
+    async (
+      _event,
+      payload: { id: string; name: string; description?: string; code: string },
+    ) => {
+      await persistScriptTemplate(
+        payload.id,
+        payload.name,
+        payload.description,
+        payload.code,
+      );
+      return { success: true };
+    },
+  );
+
+  // 更新脚本模板
+  ipcMain.handle(
+    "script:update",
+    async (
+      _event,
+      templateId: string,
+      payload: { name?: string; description?: string; code?: string },
+    ) => {
+      await updateScriptTemplate(
+        templateId,
+        payload.name,
+        payload.description,
+        payload.code,
+      );
+      // 清除缓存，强制重新加载
+      await loadScriptTemplate(templateId);
+      return { success: true };
+    },
+  );
+
+  // 删除脚本模板
+  ipcMain.handle("script:delete", async (_event, templateId: string) => {
+    const success = await deleteScriptTemplate(templateId);
+    return { success };
+  });
+
+  // 下载脚本到本地
+  ipcMain.handle("script:download", async (_event, templateId: string) => {
+    return await downloadScriptToLocal(templateId);
+  });
+
+  // 检查脚本是否已下载
+  ipcMain.handle("script:isDownloaded", async (_event, templateId: string) => {
+    return { downloaded: isScriptDownloaded(templateId) };
+  });
+
+  // 获取所有已下载的脚本列表
+  ipcMain.handle("script:getDownloaded", async () => {
+    return { scriptIds: getDownloadedScripts() };
+  });
+  // 设备管理 IPC
+  ipcMain.handle("device:select", (_event, deviceKey: string | null) => {
+    setSelectedDevice(deviceKey);
+    return { success: true };
+  });
+  // 监控配置管理 IPC
+  ipcMain.handle("monitoring:config:load", async () => {
+    return loadMonitoringConfig();
+  });
+
+  ipcMain.handle("monitoring:config:save", async (_event, config) => {
+    const success = saveMonitoringConfig(config);
+    return { success };
+  });
+
+  ipcMain.handle("monitoring:config:reset", async () => {
+    const success = resetMonitoringConfig();
+    return { success };
   });
 }

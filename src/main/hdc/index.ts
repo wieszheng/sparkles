@@ -9,6 +9,7 @@ import { shell } from "./utils";
 import log from "electron-log";
 
 let client: Client;
+let selectedDeviceKey: string | null = null;
 let workflowExecutor: MainWorkflowExecutor | null = null;
 let winDow: BrowserWindow;
 
@@ -174,6 +175,7 @@ export async function initHdcClient(win: BrowserWindow) {
     tracker.on("add", onTargetChange);
     tracker.on("remove", onTargetChange);
   });
+
   function onTargetChange() {
     if (win) {
       setTimeout(() => win.webContents.send("hdc", "changeTarget"), 2000);
@@ -196,9 +198,18 @@ export function getClient(): Client {
   return client;
 }
 
+export function setSelectedDevice(deviceKey: string | null): void {
+  selectedDeviceKey = deviceKey;
+}
+
+export function getDeviceKey() {
+  return selectedDeviceKey;
+}
+
 export function getWindow(): BrowserWindow {
   return winDow;
 }
+
 export {
   getTargets,
   screencap,

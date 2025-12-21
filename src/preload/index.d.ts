@@ -139,23 +139,49 @@ interface Api {
   onScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
   offScreencast: (callback: (event: any, type: string, key: string, image: Uint8Array) => void) => void;
 
-  listTasks: () => Promise<SceneTask[]>
-  createTask: (task: SceneTaskConfig) => Promise<SceneTask>
-  removeTask: (taskId: string) => Promise<{ success: boolean }>
-  startTask: (taskId: string) => Promise<{ success: boolean }>
-  stopTask: (taskId: string) => Promise<{ success: boolean }>
-  getTaskMetrics: (taskId: string) => Promise<MonitorSample[]>
+  listTasks: () => Promise<SceneTask[]>;
+  createTask: (task: SceneTaskConfig) => Promise<SceneTask>;
+  removeTask: (taskId: string) => Promise<{ success: boolean }>;
+  archiveTask: (taskId: string, archived: boolean) => Promise<{ success: boolean }>;
+  startTask: (taskId: string) => Promise<{ success: boolean }>;
+  stopTask: (taskId: string) => Promise<{ success: boolean }>;
+  getTaskMetrics: (taskId: string) => Promise<MonitorSample[]>;
   listScriptTemplates: () => Promise<
-      {
-        id: string
-        name: string
-        description?: string
-      }[]
-  >
+    {
+      id: string
+      name: string
+      description?: string
+    }[]
+  >;
+  getScriptTemplate: (templateId: string) => Promise<{
+    name: string
+    description?: string
+    code: string
+  } | null>;
+  createScriptTemplate: (payload: {
+    id: string
+    name: string
+    description?: string
+    code: string
+  }) => Promise<{ success: boolean }>;
+  updateScriptTemplate: (
+    templateId: string,
+    payload: { name?: string; description?: string; code?: string }
+  ) => Promise<{ success: boolean }>;
+  deleteScriptTemplate: (templateId: string) => Promise<{ success: boolean }>;
+  downloadScript: (templateId: string) => Promise<{ success: boolean; message?: string }>;
+  isScriptDownloaded: (templateId: string) => Promise<{ downloaded: boolean }>;
+  getDownloadedScripts: () => Promise<{ scriptIds: string[] }>;
+  loadMonitoringConfig: () => Promise<MonitoringConfig>;
+  saveMonitoringConfig: (config: MonitoringConfig) => Promise<{ success: boolean }>;
+  resetMonitoringConfig: () => Promise<{ success: boolean }>;
 
-  onMonitorData: (handler: (sample: MonitorSample) => void) => () => void
-  onMonitorAlert: (handler: (alert: MonitorAlert) => void) => () => void
-  onMonitorError: (handler: (error: { taskId?: string; error: string }) => void) => () => void
+  selectDevice: (deviceKey: string | null) => Promise<{ success: boolean }>;
+
+  onDeviceChange: (handler: () => void) => () => void;
+  onMonitorData: (handler: (sample: MonitorSample) => void) => () => void;
+  onMonitorAlert: (handler: (alert: MonitorAlert) => void) => () => void;
+  onMonitorError: (handler: (error: { taskId?: string; error: string }) => void) => () => void;
 }
 
 declare global {

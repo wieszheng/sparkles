@@ -1,4 +1,4 @@
-import { getClient } from "./index";
+import { getClient, getDeviceKey } from "./index.ts";
 
 /**
  * SPDaemon 监控配置选项
@@ -485,14 +485,14 @@ export class SPDaemon {
   /**
    * 采集性能数据
    */
-  async collect(
-    connectKey: string,
-    options: SPDaemonOptions,
-  ): Promise<SPDaemonRawData> {
+  async collect(options: SPDaemonOptions): Promise<SPDaemonRawData> {
     const command = this.buildCommand(options);
     try {
-      const connection = await getClient().getTarget(connectKey).shell(command);
+      const connection = await getClient()
+        .getTarget(getDeviceKey()!)
+        .shell(command);
       const output = await connection.readAll();
+
       return this.parseOutput(output.toString("utf-8"));
     } catch (error) {
       throw new Error(`SP_daemon execution failed: ${error}`);

@@ -18,6 +18,10 @@ interface MonitoringTask {
   endTime?: string;
   /** 对应主进程中的真实任务 id，用于 start/stop/remove 等操作 */
   backendId?: string;
+  /** 错误信息（当 status 为 error 时使用） */
+  errorMessage?: string;
+  /** 是否已归档 */
+  archived?: boolean;
   data?: {
     cpu: Array<{ time: string; value: number }>;
     memory: Array<{ time: string; value: number }>;

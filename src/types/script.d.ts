@@ -24,7 +24,6 @@ interface SceneTaskConfig {
   id: string;
   name: string;
   packageName: string;
-  connectKey: string;
   metrics: MonitoringMetric[];
   // 脚本模板 ID，对应注册的脚本模板函数
   scriptTemplateId: string;
@@ -39,6 +38,10 @@ interface SceneTaskConfig {
 interface SceneTask extends SceneTaskConfig {
   status: SceneTaskStatus;
   createdAt: number;
+  /** 错误信息（当 status 为 error 时使用） */
+  errorMessage?: string;
+  /** 是否已归档 */
+  archived?: boolean;
 }
 
 // 性能评分
@@ -77,10 +80,32 @@ interface MonitorSample {
 interface ScriptHelpers {
   log: (message: string) => void;
   sleep: (ms: number) => Promise<void>;
-  execHdcShell: (cmd: string) => Promise<string>;
   isAborted: () => boolean;
+  // 图片模板匹配
+  matchImageTemplate: (
+    screenshotBase64: string,
+    templateBase64: string,
+    threshold?: number,
+  ) => Promise<{
+    found: boolean;
+    confidence: number;
+    position?: { x: number; y: number; width: number; height: number };
+    center?: { x: number; y: number };
+  }>;
+  // UI 操作相关
+  tap: (x: number, y: number) => Promise<void>;
+  swipe: (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    duration?: number,
+  ) => Promise<void>;
+  inputText: (text: string) => Promise<void>;
+  // 应用相关
+  launchApp: (packageName: string) => Promise<void>;
+  stopApp: (packageName: string) => Promise<void>;
 }
-
 // 脚本模板函数类型：接收任务和辅助工具，执行场景逻辑
 type ScriptTemplate = (
   task: SceneTask,

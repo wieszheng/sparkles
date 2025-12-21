@@ -8,7 +8,6 @@ import { initIpcHandlers } from "./handlers";
 import { setupMenu } from "./menu";
 import { destroyTray, setUpTray } from "./tray";
 
-import "./hdc/templates";
 import { setMainWindow } from "./hdc/monitor.ts";
 
 let loadingWindow: BrowserWindow | null = null;

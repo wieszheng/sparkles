@@ -13,7 +13,13 @@ import {
   HardDrive,
   Thermometer,
   Battery,
+  RotateCcw,
+  Save,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 export interface MonitoringConfigProps {
   config: {
@@ -29,6 +35,66 @@ export function MonitoringConfigPanel({
   onConfigChange,
 }: MonitoringConfigProps) {
   const { interval, enableAlerts, thresholds } = config;
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // 加载配置
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    try {
+      setLoading(true);
+      const savedConfig = await window.api.loadMonitoringConfig();
+      if (savedConfig) {
+        onConfigChange(savedConfig);
+      }
+    } catch (error) {
+      console.error("加载监控配置失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      const result = await window.api.saveMonitoringConfig(config);
+      if (result.success) {
+        toast.success("配置已保存");
+      } else {
+        toast.error("保存失败");
+      }
+    } catch (error) {
+      console.error("保存监控配置失败:", error);
+      toast.error("保存失败: " + String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm("确定要重置为默认配置吗？")) {
+      return;
+    }
+    try {
+      setSaving(true);
+      const result = await window.api.resetMonitoringConfig();
+      if (result.success) {
+        await loadConfig();
+        toast.success("已重置为默认配置");
+      } else {
+        toast.error("重置失败");
+      }
+    } catch (error) {
+      console.error("重置监控配置失败:", error);
+      toast.error("重置失败: " + String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleThresholdChange = (
     key: keyof AlertThresholdsConfig,
@@ -63,7 +129,7 @@ export function MonitoringConfigPanel({
                 })
               }
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-30">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -80,7 +146,7 @@ export function MonitoringConfigPanel({
             </label>
             <Input
               type="number"
-              className="w-32 text-xs text-center"
+              className="w-30 text-xs text-center"
               value={interval ?? ""}
               onChange={(e) =>
                 onConfigChange({
@@ -103,28 +169,15 @@ export function MonitoringConfigPanel({
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">启用告警</span>
-            <button
-              type="button"
+            <Switch
               onClick={() =>
                 onConfigChange({
                   ...config,
                   enableAlerts: !enableAlerts,
                 })
               }
-              className={`h-6 w-12 rounded-full border p-1 transition ${
-                enableAlerts
-                  ? "border-emerald-200 bg-emerald-50"
-                  : "border-border bg-background"
-              }`}
-            >
-              <div
-                className={`h-4 w-4 rounded-full transition ${
-                  enableAlerts
-                    ? "translate-x-5 bg-emerald-600"
-                    : "translate-x-0 bg-muted-foreground"
-                }`}
-              />
-            </button>
+              checked={enableAlerts}
+            ></Switch>
           </div>
           <p className="text-xs text-muted-foreground">
             当前未启用告警，仍会采集性能指标但不会触发告警事件。
@@ -194,7 +247,7 @@ export function MonitoringConfigPanel({
                           : Number(e.target.value),
                       )
                     }
-                    className="w-16 h-8 text-xs text-center"
+                    className="w-18 h-7 text-xs text-center"
                   />
                   <Input
                     type="number"
@@ -208,7 +261,7 @@ export function MonitoringConfigPanel({
                           : Number(e.target.value),
                       )
                     }
-                    className="w-16 h-8 text-xs text-center"
+                    className="w-18 h-7 text-xs text-center"
                   />
                   <span className="text-xs text-muted-foreground w-8 text-right">
                     {item.unit}
@@ -220,19 +273,31 @@ export function MonitoringConfigPanel({
         </div>
       </div>
 
-      {/* 保存按钮（当前仅更新父组件 state，不做持久化） */}
-      {/*<div className="flex justify-end">*/}
-      {/*  <Button*/}
-      {/*    className="h-8 px-5 text-xs"*/}
-      {/*    type="button"*/}
-      {/*    onClick={() => {*/}
-      {/*      // 预留：未来如需持久化到本地配置，可在父组件中监听 config 变化*/}
-      {/*    }}*/}
-      {/*  >*/}
-      {/*    <Save className="h-3.5 w-3.5 mr-1.5" />*/}
-      {/*    保存配置*/}
-      {/*  </Button>*/}
-      {/*</div>*/}
+      {/* 保存按钮 */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleReset}
+            disabled={saving || loading}
+          >
+            <RotateCcw className="h-4 w-4" />
+            重置
+          </Button>
+          <div className="flex gap-2">
+            {loading && (
+              <span className="text-xs text-muted-foreground flex items-center">
+                加载中...
+              </span>
+            )}
+            <Button size="sm" onClick={handleSave} disabled={saving || loading}>
+              <Save className="h-4 w-4" />
+              {saving ? "保存中..." : "保存配置"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

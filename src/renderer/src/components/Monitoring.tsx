@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, BarChart3, ListTodo, Settings, Package } from "lucide-react";
+import {
+  Plus,
+  BarChart3,
+  ListTodo,
+  Settings,
+  Package,
+  GitCompare,
+} from "lucide-react";
 
 // 子组件
 import { MonitoringDashboard } from "./monitoring/monitoring-dashboard";
@@ -10,6 +17,7 @@ import { ScriptMarket } from "./monitoring/script-editor";
 import { MonitoringConfigPanel } from "./monitoring/monitoring-config";
 import { TaskDetailSheet } from "./monitoring/task-detail-sheet";
 import { CreateTaskDialog } from "./monitoring/create-task-dialog";
+import { ComparisonAnalysis } from "@/components/monitoring/comparison-analysis";
 
 function statusMap(status: SceneTaskStatus): MonitorTaskStatus {
   switch (status) {
@@ -155,12 +163,15 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
   const [enableAlerts, setEnableAlerts] = useState(false);
 
+  const loadTasks = async () => {
+    const data = await window.api.listTasks();
+    setBackendTasks(data);
+  };
+
   const tasks: MonitoringTask[] = useMemo(() => {
     return backendTasks.map((t, index) => {
       const samples = metricsMap[t.id] ?? [];
-
       const data = buildTaskDataFromSamples(samples, t.metrics);
-
       return {
         id: index + 1,
         name: t.name,
@@ -175,21 +186,12 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
           : undefined,
         endTime: undefined,
         backendId: t.id,
+        errorMessage: t.errorMessage,
+        archived: t.archived,
         data,
       };
     });
   }, [backendTasks, metricsMap]);
-
-  useEffect(() => {
-    const hasRunning = backendTasks.some((t) => t.status === "running");
-    if (!hasRunning) return;
-
-    const timer = setInterval(() => {
-      void loadTasks();
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [backendTasks]);
 
   const loadApps = async () => {
     try {
@@ -214,27 +216,30 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
     loadTasks();
     loadApps();
     // 脚本模板
-    window.api
-      .listScriptTemplates()
-      .then((templates) => {
+    const loadScriptTemplates = async () => {
+      try {
+        const templates = await window.api.listScriptTemplates();
         const mappedScripts: ScriptFile[] = templates.map((t, idx) => ({
           id: idx + 1,
           name: t.id, // 这里存放真实的 scriptTemplateId，创建任务时直接使用
           label: t.name,
-          description: t.description ?? "",
-          content: "// 脚本模板在主进程中以函数形式定义，此处仅展示元信息",
-          lastModified: "",
+          description: t.description ?? "脚本模板，执行时动态加载",
+          content: "// 脚本代码存储执行时会动态下载到本地并执行",
+          lastModified: new Date().toISOString().split("T")[0],
           category: "other",
           difficulty: "beginner",
           downloads: 0,
           rating: 5,
-          author: "内置模板",
+          author: "shwezheng",
           tags: [],
         }));
-
         setScripts(mappedScripts);
-      })
-      .catch(console.error);
+      } catch (error) {
+        console.error("加载脚本模板失败:", error);
+      }
+    };
+
+    void loadScriptTemplates();
 
     // 监控数据
     const unsubscribeMonitorData = window.api.onMonitorData((sample) => {
@@ -249,13 +254,10 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
     // 告警与错误
     const unsubscribeAlert = window.api.onMonitorAlert((alert) => {
-      // setAlerts((prev) => [alert, ...prev].slice(0, 100));
-
-      console.log("alert", alert.type);
+      console.info("unsubscribeAlert:", alert);
     });
     const unsubscribeError = window.api.onMonitorError((evt) => {
-      // setErrors((prev) => [evt, ...prev].slice(0, 100));
-      console.log("error", evt);
+      console.info("unsubscribeError:", evt);
     });
 
     return () => {
@@ -264,6 +266,17 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       unsubscribeError();
     };
   }, []);
+
+  useEffect(() => {
+    const hasRunning = backendTasks.some((t) => t.status === "running");
+    if (!hasRunning) return;
+
+    const timer = setInterval(() => {
+      void loadTasks();
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [backendTasks]);
 
   const handleOpenTaskDialog = () => {
     setFormData({
@@ -282,10 +295,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
     });
     setOpenTaskDialog(true);
   };
-  const loadTasks = async () => {
-    const data = await window.api.listTasks();
-    setBackendTasks(data);
-  };
+
   const handleCreateTask = () => {
     if (!formData.name || !formData.script || !formData.app) return;
 
@@ -304,7 +314,6 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
         id,
         name: formData.name,
         packageName: formData.app,
-        connectKey: selectedDevice,
         metrics: metricKeys,
         scriptTemplateId: formData.script,
         monitorConfig: enableAlerts
@@ -338,6 +347,20 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       .catch(console.error);
   };
 
+  const handleArchiveTask = async (id: number, archived: boolean) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task?.backendId) return;
+
+    try {
+      const result = await window.api.archiveTask(task.backendId, archived);
+      if (result.success) {
+        await loadTasks();
+      }
+    } catch (error) {
+      console.error("归档任务失败:", error);
+    }
+  };
+
   const handleDeleteTask = (id: number) => {
     const task = tasks.find((t) => t.id === id);
     if (!task?.backendId) return;
@@ -349,10 +372,48 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       .catch(console.error);
   };
 
-  const handleViewTask = (task: MonitoringTask) => {
+  const handleViewTask = async (task: MonitoringTask) => {
+    console.info("handleViewTask:", task);
     setSelectedTask(task);
     setShowDetailSheet(true);
+
+    // 加载任务的监控数据（如果还没有加载或需要刷新）
+    if (task.backendId) {
+      try {
+        const history = await window.api.getTaskMetrics(task.backendId);
+        setMetricsMap((prev) => ({
+          ...prev,
+          [task.backendId!]: history,
+        }));
+      } catch (error) {
+        console.error("Failed to load task metrics", error);
+      }
+    }
   };
+
+  // 当 metricsMap 或 selectedTask 变化时，更新 selectedTask 的数据
+  useEffect(() => {
+    if (selectedTask && selectedTask.backendId) {
+      const backendTask = backendTasks.find(
+        (t) => t.id === selectedTask.backendId,
+      );
+      const samples = metricsMap[selectedTask.backendId] ?? [];
+      const data = buildTaskDataFromSamples(samples, backendTask?.metrics);
+
+      // 只有当数据真正变化时才更新
+      const currentDataStr = JSON.stringify(selectedTask.data);
+      const newDataStr = JSON.stringify(data);
+      if (currentDataStr !== newDataStr) {
+        setSelectedTask((prev) => {
+          if (!prev || prev.backendId !== selectedTask.backendId) return prev;
+          return {
+            ...prev,
+            data,
+          };
+        });
+      }
+    }
+  }, [metricsMap, backendTasks, selectedTask?.backendId, selectedTask]);
 
   const handleToggleTaskStatus = (id: number) => {
     const task = tasks.find((t) => t.id === id);
@@ -411,6 +472,13 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
                     <Package className="h-3.5 w-3.5" />
                     脚本市场
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="comparison"
+                    className="text-xs px-3 h-7 gap-1.5"
+                  >
+                    <GitCompare className="h-3.5 w-3.5" />
+                    对比分析
+                  </TabsTrigger>
                   <TabsTrigger value="config" className="text-xs px-3  gap-1.5">
                     <Settings className="h-3.5 w-3.5" />
                     监控配置
@@ -431,7 +499,10 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
         {/* 主内容区 */}
         <div className="flex-1 overflow-hidden p-1 mt-1">
-          <TabsContent value="dashboard" className="mt-0 h-full overflow-hidden">
+          <TabsContent
+            value="dashboard"
+            className="mt-0 h-full overflow-hidden"
+          >
             <MonitoringDashboard
               tasks={tasks}
               onCreateTask={handleOpenTaskDialog}
@@ -445,11 +516,16 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
               onViewTask={handleViewTask}
               onToggleTaskStatus={handleToggleTaskStatus}
               onDeleteTask={handleDeleteTask}
+              onArchiveTask={handleArchiveTask}
             />
           </TabsContent>
 
           <TabsContent value="scripts" className="mt-0 h-full">
             <ScriptMarket scripts={scripts} onSaveScript={handleSaveScript} />
+          </TabsContent>
+
+          <TabsContent value="comparison" className="mt-0 flex-1 overflow-auto">
+            <ComparisonAnalysis tasks={tasks} />
           </TabsContent>
 
           <TabsContent value="config" className="mt-0 flex-1 overflow-auto">
@@ -472,10 +548,14 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       {/* 任务详情抽屉 */}
       <TaskDetailSheet
         open={showDetailSheet}
-        onOpenChange={setShowDetailSheet}
+        onOpenChange={(open) => {
+          setShowDetailSheet(open);
+          if (!open) {
+            setSelectedTask(null);
+          }
+        }}
         task={selectedTask}
       />
-
       {/* 新建任务对话框 */}
       <CreateTaskDialog
         open={openTaskDialog}

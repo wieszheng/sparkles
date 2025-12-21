@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -13,32 +12,62 @@ import {
 } from "@/components/ui/select";
 import {
   Search,
-  Code2,
-  Save,
   Star,
   Download,
   User,
   Tag,
-  Filter,
   FileCode,
   Eye,
   Package,
 } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useTheme } from "@/components/theme-provider";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ScriptMarketProps {
   scripts: ScriptFile[];
-  onSaveScript: (id: number, content: string) => void;
+  onSaveScript?: (id: number, content: string) => void;
 }
 
-export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
+export function ScriptMarket({ scripts }: ScriptMarketProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("popular");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedScript, setSelectedScript] = useState<ScriptFile | null>(null);
   const [scriptContent, setScriptContent] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const { theme } = useTheme();
+
+  const loadScriptCode = async (templateId: string) => {
+    try {
+      const template = await window.api.getScriptTemplate(templateId);
+      return template?.code || "";
+    } catch (error) {
+      console.error("加载脚本代码失败:", error);
+      return "";
+    }
+  };
+
+  const handleViewScript = async (script: ScriptFile) => {
+    // 如果是脚本模板（ID 以 script- 开头），加载实际代码
+    if (script.name.startsWith("script-")) {
+      const code = await loadScriptCode(script.name);
+      setScriptContent(code || script.content);
+    } else {
+      setScriptContent(script.content);
+    }
+    setSelectedScript(script);
+    setShowPreview(true);
+  };
 
   const categories = [
     { value: "all", label: "全部" },
@@ -57,13 +86,6 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
     { value: "advanced", label: "高级" },
   ];
 
-  const sortOptions = [
-    { value: "popular", label: "热门" },
-    { value: "newest", label: "最新" },
-    { value: "rating", label: "评分" },
-    { value: "downloads", label: "下载量" },
-  ];
-
   const filteredScripts = scripts
     .filter((script) => {
       const matchesSearch =
@@ -79,33 +101,7 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
         script.difficulty === selectedDifficulty;
       return matchesSearch && matchesCategory && matchesDifficulty;
     })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "rating":
-          return b.rating - a.rating;
-        case "downloads":
-          return b.downloads - a.downloads;
-        case "newest":
-          return (
-            new Date(b.lastModified).getTime() -
-            new Date(a.lastModified).getTime()
-          );
-        default:
-          return b.downloads - a.downloads;
-      }
-    });
-
-  const handleViewScript = (script: ScriptFile) => {
-    setSelectedScript(script);
-    setScriptContent(script.content);
-    setShowPreview(true);
-  };
-
-  const handleUseScript = (script: ScriptFile) => {
-    setSelectedScript(script);
-    setScriptContent(script.content);
-    setShowPreview(false);
-  };
+    .sort();
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -135,7 +131,7 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* 固定搜索和筛选区域 */}
-      <div className="flex-shrink-0 space-y-3 pb-3 border-b border-border/30">
+      <div className="flex-shrink-0 space-y-3 pb-3">
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -143,21 +139,45 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
               placeholder="搜索脚本名称、描述或标签..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
+              className="pl-8 w-85"
             />
           </div>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-28 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {sortOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              共找到 {filteredScripts.length} 个脚本
+            </div>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
+              <SelectTrigger className="w-32 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedDifficulty}
+              onValueChange={setSelectedDifficulty}
+            >
+              <SelectTrigger className="w-28 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {difficulties.map((difficulty) => (
+                  <SelectItem key={difficulty.value} value={difficulty.value}>
+                    {difficulty.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center gap-1 bg-muted/30 rounded-md p-1">
             <Button
               variant={viewMode === "grid" ? "default" : "ghost"}
@@ -175,43 +195,6 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
             >
               <FileCode className="h-3.5 w-3.5" />
             </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">筛选:</span>
-          </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-32 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category.value} value={category.value}>
-                  {category.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedDifficulty}
-            onValueChange={setSelectedDifficulty}
-          >
-            <SelectTrigger className="w-28 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {difficulties.map((difficulty) => (
-                <SelectItem key={difficulty.value} value={difficulty.value}>
-                  {difficulty.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="text-xs text-muted-foreground">
-            共找到 {filteredScripts.length} 个脚本
           </div>
         </div>
       </div>
@@ -301,13 +284,6 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
                         <Eye className="h-3 w-3" />
                         预览
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleUseScript(script)}
-                        className="flex-1 h-7 text-xs"
-                      >
-                        使用脚本
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -388,13 +364,6 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
                         <Eye className="h-3 w-3" />
                         预览
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleUseScript(script)}
-                        className="h-8 text-xs"
-                      >
-                        使用脚本
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -406,18 +375,43 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
 
       {/* 脚本预览/编辑对话框 */}
       {showPreview && selectedScript && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-border/30">
-              <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  {selectedScript.label}
-                </span>
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-7xl max-h-[75vh] flex flex-col bg-card">
+            <DialogHeader>
+              <DialogTitle>{selectedScript.label}</DialogTitle>
+              <DialogDescription>
+                {selectedScript.description}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto">
+              <div className="rounded-lg overflow-hidden border border-border/30">
+                <SyntaxHighlighter
+                  language="javascript"
+                  style={tomorrow}
+                  customStyle={{
+                    margin: 0,
+                    padding: "1rem",
+                    fontSize: "0.85rem",
+                    background: "transparent",
+                    borderRadius: "0.375rem",
+                  }}
+                  showLineNumbers
+                  wrapLines
+                  wrapLongLines
+                  lineNumberStyle={{
+                    minWidth: "3em",
+                    paddingRight: "1em",
+                    color: theme === "dark" ? "#858585" : "#858585",
+                    userSelect: "none",
+                  }}
+                >
+                  {scriptContent || "// 暂无代码"}
+                </SyntaxHighlighter>
               </div>
+            </div>
+            <DialogFooter>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="outline"
                 onClick={() => {
                   setShowPreview(false);
                   setSelectedScript(null);
@@ -426,60 +420,9 @@ export function ScriptMarket({ scripts, onSaveScript }: ScriptMarketProps) {
               >
                 关闭
               </Button>
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              <pre className="bg-muted/30 rounded-md p-4 text-xs font-mono overflow-auto">
-                {scriptContent}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 脚本编辑界面 */}
-      {!showPreview && selectedScript && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-border/30">
-              <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  编辑脚本: {selectedScript.label}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedScript(null);
-                    setScriptContent("");
-                  }}
-                >
-                  取消
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onSaveScript(selectedScript.id, scriptContent);
-                    setSelectedScript(null);
-                    setScriptContent("");
-                  }}
-                  className="gap-1"
-                >
-                  <Save className="h-3 w-3" />
-                  保存
-                </Button>
-              </div>
-            </div>
-            <Textarea
-              value={scriptContent}
-              onChange={(e) => setScriptContent(e.target.value)}
-              className="flex-1 resize-none border-0 rounded-none font-mono text-xs focus-visible:ring-0 p-4"
-              placeholder="// 在这里编辑你的脚本..."
-            />
-          </div>
-        </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
