@@ -70,7 +70,7 @@ function createWindow(): void {
     shell.openExternal(details.url);
     return { action: "deny" };
   });
-
+  mainWindow.webContents.openDevTools();
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
     mainWindow.webContents.openDevTools();

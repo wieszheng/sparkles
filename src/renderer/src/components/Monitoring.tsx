@@ -118,24 +118,6 @@ function buildTaskDataFromSamples(
 }
 
 export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    script: "",
-    app: "",
-    metrics: {
-      cpu: true,
-      memory: true,
-      gpu: false,
-      fps: false,
-      temperature: false,
-      power: false,
-      network: false,
-    } as Omit<MonitorConfig, "interval">,
-  });
-
-  const [monitorConfig, setMonitorConfig] = useState<{ interval?: string }>({
-    interval: "1",
-  });
   const [backendTasks, setBackendTasks] = useState<SceneTask[]>([]);
   const [metricsMap, setMetricsMap] = useState<Record<string, MonitorSample[]>>(
     {},
@@ -144,9 +126,6 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [selectedTask, setSelectedTask] = useState<MonitoringTask | null>(null);
-  // const [, setScriptTemplates] = useState<ScriptTemplateSummary[]>([])
-  const [apps, setApps] = useState<Application[]>([]);
-  const [scripts, setScripts] = useState<ScriptFile[]>([]);
 
   const [alertThresholds, setAlertThresholds] = useState<AlertThresholdsConfig>(
     {
@@ -193,53 +172,8 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
     });
   }, [backendTasks, metricsMap]);
 
-  const loadApps = async () => {
-    try {
-      const bundleNames = await window.api.getBundles(selectedDevice, false);
-
-      if (bundleNames.length > 0) {
-        // 获取应用详细信息
-        const bundleInfos = await window.api.getBundleInfos(
-          selectedDevice,
-          bundleNames,
-        );
-        setApps(bundleInfos);
-      } else {
-        setApps([]);
-      }
-    } catch (error) {
-      console.error("加载应用列表失败:", error);
-    }
-  };
-
   useEffect(() => {
     loadTasks();
-    loadApps();
-    // 脚本模板
-    const loadScriptTemplates = async () => {
-      try {
-        const templates = await window.api.listScriptTemplates();
-        const mappedScripts: ScriptFile[] = templates.map((t, idx) => ({
-          id: idx + 1,
-          name: t.id, // 这里存放真实的 scriptTemplateId，创建任务时直接使用
-          label: t.name,
-          description: t.description ?? "脚本模板，执行时动态加载",
-          content: "// 脚本代码存储执行时会动态下载到本地并执行",
-          lastModified: new Date().toISOString().split("T")[0],
-          category: "other",
-          difficulty: "beginner",
-          downloads: 0,
-          rating: 5,
-          author: "shwezheng",
-          tags: [],
-        }));
-        setScripts(mappedScripts);
-      } catch (error) {
-        console.error("加载脚本模板失败:", error);
-      }
-    };
-
-    void loadScriptTemplates();
 
     // 监控数据
     const unsubscribeMonitorData = window.api.onMonitorData((sample) => {
@@ -273,107 +207,60 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
     const timer = setInterval(() => {
       void loadTasks();
-    }, 1000);
+    }, 3000);
 
     return () => clearInterval(timer);
   }, [backendTasks]);
 
   const handleOpenTaskDialog = () => {
-    setFormData({
-      name: "",
-      script: "",
-      app: "",
-      metrics: {
-        cpu: true,
-        memory: true,
-        gpu: false,
-        fps: false,
-        temperature: false,
-        power: false,
-        network: false,
-      } as Omit<MonitorConfig, "interval">,
-    });
     setOpenTaskDialog(true);
   };
 
-  const handleCreateTask = () => {
-    if (!formData.name || !formData.script || !formData.app) return;
+  const handleCreateTask = async (taskData: {
+    name: string;
+    script: string;
+    app: string;
+    metrics: Omit<MonitorConfig, "interval">;
+  }) => {
+    if (!taskData.metrics || typeof taskData.metrics !== "object") {
+      console.error("Invalid metrics data:", taskData.metrics);
+      return;
+    }
 
     const metricKeys: MonitoringMetric[] = (
-      Object.keys(formData.metrics) as MonitoringMetric[]
+      Object.keys(taskData.metrics) as MonitoringMetric[]
     ).filter(
-      (k) => formData.metrics[k as keyof Omit<MonitorConfig, "interval">],
+      (k) => taskData.metrics[k as keyof Omit<MonitorConfig, "interval">],
     );
 
     if (metricKeys.length === 0) return;
 
     const id = `${Date.now()}`;
-
-    void window.api
-      .createTask({
+    try {
+      await window.api.createTask({
         id,
-        name: formData.name,
-        packageName: formData.app,
+        name: taskData.name,
+        packageName: taskData.app,
         metrics: metricKeys,
-        scriptTemplateId: formData.script,
+        scriptTemplateId: taskData.script,
         monitorConfig: enableAlerts
           ? {
               enableAlerts: true,
               thresholds: alertThresholds,
             }
           : undefined,
-      })
-      .then(async () => {
-        setOpenTaskDialog(false);
-        setFormData({
-          name: "",
-          script: "",
-          app: "",
-          metrics: {
-            cpu: true,
-            memory: true,
-            gpu: false,
-            fps: false,
-            temperature: false,
-            power: false,
-            network: false,
-          } as Omit<MonitorConfig, "interval">,
-        });
-        await loadTasks();
-        // 新建任务后主动启动执行
-        await window.api.startTask(id);
-        await loadTasks();
-      })
-      .catch(console.error);
-  };
-
-  const handleArchiveTask = async (id: number, archived: boolean) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task?.backendId) return;
-
-    try {
-      const result = await window.api.archiveTask(task.backendId, archived);
-      if (result.success) {
-        await loadTasks();
-      }
+      });
+      setOpenTaskDialog(false);
+      await loadTasks();
+      // 新建任务后主动启动执行
+      await window.api.startTask(id);
+      await loadTasks();
     } catch (error) {
-      console.error("归档任务失败:", error);
+      console.error("创建任务失败:", error);
     }
   };
 
-  const handleDeleteTask = (id: number) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task?.backendId) return;
-    void window.api
-      .removeTask(task.backendId)
-      .then(() => {
-        void loadTasks();
-      })
-      .catch(console.error);
-  };
-
   const handleViewTask = async (task: MonitoringTask) => {
-    console.info("handleViewTask:", task);
     setSelectedTask(task);
     setShowDetailSheet(true);
 
@@ -414,36 +301,6 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       }
     }
   }, [metricsMap, backendTasks, selectedTask?.backendId, selectedTask]);
-
-  const handleToggleTaskStatus = (id: number) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task?.backendId) return;
-
-    const action =
-      task.status === "running"
-        ? () => window.api.stopTask(task.backendId!)
-        : () => window.api.startTask(task.backendId!);
-
-    void action()
-      .then(() => {
-        void loadTasks();
-      })
-      .catch(console.error);
-  };
-
-  const handleSaveScript = (id: number, content: string) => {
-    setScripts(
-      scripts.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              content,
-              lastModified: new Date().toISOString().split("T")[0],
-            }
-          : s,
-      ),
-    );
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -487,8 +344,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
               </div>
               <Button
                 onClick={handleOpenTaskDialog}
-                size="sm"
-                className="h-8 text-xs gap-1.5"
+                className="h-7.5 text-xs gap-1"
               >
                 <Plus className="h-3.5 w-3.5" />
                 新建任务
@@ -506,37 +362,43 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
             <MonitoringDashboard
               tasks={tasks}
               onCreateTask={handleOpenTaskDialog}
-              onToggleTaskStatus={handleToggleTaskStatus}
+              onToggleTaskStatus={(id: number) => {
+                const task = tasks.find((t) => t.id === id);
+                if (!task?.backendId) return;
+
+                const action =
+                  task.status === "running"
+                    ? () => window.api.stopTask(task.backendId!)
+                    : () => window.api.startTask(task.backendId!);
+
+                void action()
+                  .then(() => {
+                    void loadTasks();
+                  })
+                  .catch(console.error);
+              }}
             />
           </TabsContent>
 
-          <TabsContent value="tasks" className="mt-0">
-            <TaskManagement
-              tasks={tasks}
-              onViewTask={handleViewTask}
-              onToggleTaskStatus={handleToggleTaskStatus}
-              onDeleteTask={handleDeleteTask}
-              onArchiveTask={handleArchiveTask}
-            />
+          <TabsContent value="tasks" className="mt-0 h-full flex flex-col">
+            <TaskManagement onViewTask={handleViewTask} />
           </TabsContent>
 
           <TabsContent value="scripts" className="mt-0 h-full">
-            <ScriptMarket scripts={scripts} onSaveScript={handleSaveScript} />
+            <ScriptMarket />
           </TabsContent>
 
-          <TabsContent value="comparison" className="mt-0 flex-1 overflow-auto">
+          <TabsContent value="comparison" className="mt-0 h-full">
             <ComparisonAnalysis tasks={tasks} />
           </TabsContent>
 
           <TabsContent value="config" className="mt-0 flex-1 overflow-auto">
             <MonitoringConfigPanel
               config={{
-                interval: monitorConfig.interval,
                 enableAlerts,
                 thresholds: alertThresholds,
               }}
               onConfigChange={(cfg) => {
-                setMonitorConfig({ interval: cfg.interval });
                 setAlertThresholds(cfg.thresholds);
                 setEnableAlerts(cfg.enableAlerts);
               }}
@@ -558,12 +420,9 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
       />
       {/* 新建任务对话框 */}
       <CreateTaskDialog
+        selectedDevice={selectedDevice}
         open={openTaskDialog}
         onOpenChange={setOpenTaskDialog}
-        scripts={scripts}
-        apps={apps}
-        formData={formData}
-        onFormDataChange={setFormData}
         onCreateTask={handleCreateTask}
       />
     </div>

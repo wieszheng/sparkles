@@ -55,7 +55,6 @@ export async function collectMetricsForTask(
     const metrics = spDaemon.calculateMetrics(rawData);
     if (metrics) {
       // 转换为 MonitorSample 格式（兼容基础格式）
-      console.log("collectMetricsForTask metrics", metrics);
       return {
         timestamp: metrics.timestamp,
         // 基础字段（向后兼容）

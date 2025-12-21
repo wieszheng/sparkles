@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Battery, Cpu, HardDrive, Thermometer, Wifi } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { useEffect, useState } from "react";
 
 const monitorMetrics: MonitorMetric[] = [
   { key: "cpu", label: "CPU 使用率", icon: Cpu, color: "#3b82f6", unit: "%" },
@@ -65,36 +66,106 @@ const monitorMetrics: MonitorMetric[] = [
 ];
 
 interface CreateTaskDialogProps {
+  selectedDevice: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scripts: ScriptFile[];
-  apps: Application[];
-  formData: {
+  onCreateTask: (taskData: {
     name: string;
     script: string;
     app: string;
     metrics: Omit<MonitorConfig, "interval">;
-  };
-  onFormDataChange: (data: {
-    name: string;
-    script: string;
-    app: string;
-    metrics: Omit<MonitorConfig, "interval">;
-  }) => void;
-  onCreateTask: () => void;
+  }) => Promise<void>;
 }
 
 export function CreateTaskDialog({
+  selectedDevice,
   open,
   onOpenChange,
-  scripts,
-  apps,
-  formData,
-  onFormDataChange,
   onCreateTask,
 }: CreateTaskDialogProps) {
+  const [scripts, setScripts] = useState<ScriptFile[]>([]);
+  const [apps, setApps] = useState<Application[]>([]);
+  const [formData, setFormData] = useState({
+    name: "",
+    script: "",
+    app: "",
+    metrics: {
+      cpu: true,
+      memory: true,
+      gpu: false,
+      fps: false,
+      temperature: false,
+      power: false,
+      network: false,
+    } as Omit<MonitorConfig, "interval">,
+  });
+
+  // 加载脚本模板和应用列表
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // 加载脚本模板
+        const templates = await window.api.listScriptTemplates();
+        const mappedScripts: ScriptFile[] = templates.map((t, idx) => ({
+          id: idx + 1,
+          name: t.id,
+          label: t.name,
+          description:
+            t.description ?? "脚本模板，代码存储在 FastAPI，执行时动态加载",
+          content: "// 脚本代码存储在 FastAPI，执行时会动态下载到本地并执行",
+          lastModified: new Date().toISOString().split("T")[0],
+          category: "other",
+          difficulty: "beginner",
+          downloads: 0,
+          rating: 5,
+          author: "用户创建",
+          tags: [],
+        }));
+        setScripts(mappedScripts);
+
+        // 加载应用列表
+        const bundleNames = await window.api.getBundles(selectedDevice, false);
+
+        if (bundleNames.length > 0) {
+          // 获取应用详细信息
+          const bundleInfos = await window.api.getBundleInfos(
+            selectedDevice,
+            bundleNames,
+          );
+          setApps(bundleInfos);
+        } else {
+          setApps([]);
+        }
+      } catch (error) {
+        console.error("加载数据失败:", error);
+      }
+    };
+    if (open) {
+      void loadData();
+    }
+  }, [open]);
+
+  // 重置表单
+  useEffect(() => {
+    if (!open) {
+      setFormData({
+        name: "",
+        script: "",
+        app: "",
+        metrics: {
+          cpu: true,
+          memory: true,
+          gpu: false,
+          fps: false,
+          temperature: false,
+          power: false,
+          network: false,
+        } as Omit<MonitorConfig, "interval">,
+      });
+    }
+  }, [open]);
   const handleMetricToggle = (metricKey: string, checked: boolean) => {
-    onFormDataChange({
+    setFormData({
       ...formData,
       metrics: {
         ...formData.metrics,
@@ -103,6 +174,10 @@ export function CreateTaskDialog({
     });
   };
 
+  const handleCreate = async () => {
+    if (!formData.name || !formData.script || !formData.app) return;
+    await onCreateTask(formData);
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl bg-card">
@@ -120,7 +195,7 @@ export function CreateTaskDialog({
               placeholder="例如: 登录流程监控"
               value={formData.name}
               onChange={(e) =>
-                onFormDataChange({ ...formData, name: e.target.value })
+                setFormData({ ...formData, name: e.target.value })
               }
             />
           </div>
@@ -131,7 +206,7 @@ export function CreateTaskDialog({
               <Select
                 value={formData.script}
                 onValueChange={(value) =>
-                  onFormDataChange({ ...formData, script: value })
+                  setFormData({ ...formData, script: value })
                 }
               >
                 <SelectTrigger className="w-full">
@@ -152,7 +227,7 @@ export function CreateTaskDialog({
               <Select
                 value={formData.app}
                 onValueChange={(value) =>
-                  onFormDataChange({ ...formData, app: value })
+                  setFormData({ ...formData, app: value })
                 }
               >
                 <SelectTrigger className="w-full">
@@ -160,10 +235,7 @@ export function CreateTaskDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {apps.map((app) => (
-                    <SelectItem 
-                      key={app.bundleName} 
-                      value={app.bundleName}
-                    >
+                    <SelectItem key={app.bundleName} value={app.bundleName}>
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className="truncate block">{app.label}</span>
                       </div>
@@ -228,7 +300,7 @@ export function CreateTaskDialog({
           >
             取消
           </Button>
-          <Button onClick={onCreateTask} size="sm">
+          <Button onClick={handleCreate} size="sm">
             创建任务
           </Button>
         </DialogFooter>

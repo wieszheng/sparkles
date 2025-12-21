@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,12 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface ScriptMarketProps {
-  scripts: ScriptFile[];
-  onSaveScript?: (id: number, content: string) => void;
-}
-
-export function ScriptMarket({ scripts }: ScriptMarketProps) {
+export function ScriptMarket() {
+  const [scripts, setScripts] = useState<ScriptFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
@@ -47,9 +43,38 @@ export function ScriptMarket({ scripts }: ScriptMarketProps) {
   const [showPreview, setShowPreview] = useState(false);
   const { theme } = useTheme();
 
+  // 加载脚本模板
+  useEffect(() => {
+    const loadScriptTemplates = async () => {
+      try {
+        const templates = await window.api.listScriptTemplates();
+        const mappedScripts: ScriptFile[] = templates.map((t, idx) => ({
+          id: idx + 1,
+          name: t.id, // 这里存放真实的 scriptTemplateId，创建任务时直接使用
+          label: t.name,
+          description:
+            t.description ?? "脚本模板，代码存储在 FastAPI，执行时动态加载",
+          content: "// 脚本代码存储在 FastAPI，执行时会动态下载到本地并执行",
+          lastModified: new Date().toISOString().split("T")[0],
+          category: "other",
+          difficulty: "beginner",
+          downloads: 0,
+          rating: 5,
+          author: "shwezheng",
+          tags: [],
+        }));
+        setScripts(mappedScripts);
+      } catch (error) {
+        console.error("加载脚本模板失败:", error);
+      }
+    };
+    void loadScriptTemplates();
+  }, []);
+
   const loadScriptCode = async (templateId: string) => {
     try {
       const template = await window.api.getScriptTemplate(templateId);
+      console.log("loadScriptCode", template);
       return template?.code || "";
     } catch (error) {
       console.error("加载脚本代码失败:", error);
@@ -207,7 +232,7 @@ export function ScriptMarket({ scripts }: ScriptMarketProps) {
               {filteredScripts.map((script) => (
                 <div
                   key={script.id}
-                  className="bg-card/50 rounded-lg border border-border/30 p-4 hover:border-primary/50 transition-all hover:shadow-sm"
+                  className="bg-card/70 rounded-lg border border-border/30 p-4 hover:border-primary/50 transition-all hover:shadow-sm"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
@@ -216,7 +241,7 @@ export function ScriptMarket({ scripts }: ScriptMarketProps) {
                           {script.label}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {script.description}
+                          {script.description || "暂无"}
                         </p>
                       </div>
                       <Badge
@@ -412,6 +437,7 @@ export function ScriptMarket({ scripts }: ScriptMarketProps) {
             <DialogFooter>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   setShowPreview(false);
                   setSelectedScript(null);

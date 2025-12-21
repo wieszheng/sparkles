@@ -5,15 +5,13 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 import { startMonitoring, stopMonitoring } from "./monitor";
-import { fetchScriptTemplate, matchImageTemplate } from "./persistence";
+import {
+  fetchScriptTemplate,
+  fetchScriptTemplates,
+  matchImageTemplate,
+} from "./persistence";
 import { startApp, stopApp } from "./action.ts";
 import { getDeviceKey } from "./index.ts";
-
-// 脚本模板缓存（从 FastAPI 加载）
-const scriptTemplateCache = new Map<
-  string,
-  { name: string; description?: string; code: string; updatedAt: number }
->();
 
 // 本地脚本文件缓存（模板ID -> 文件路径）
 const scriptFileCache = new Map<string, string>();
@@ -33,13 +31,6 @@ export async function loadScriptTemplate(
   try {
     const template = await fetchScriptTemplate(templateId);
     if (template) {
-      // 更新缓存
-      scriptTemplateCache.set(templateId, {
-        name: template.name,
-        description: template.description,
-        code: template.code,
-        updatedAt: template.updatedAt,
-      });
       return {
         name: template.name,
         description: template.description,
@@ -56,7 +47,6 @@ export async function loadScriptTemplate(
     return null;
   }
 }
-
 /**
  * 获取所有脚本模板列表（从 FastAPI）
  */
@@ -64,7 +54,6 @@ export async function listScriptTemplates(): Promise<
   Array<{ id: string; name: string; description?: string }>
 > {
   try {
-    const { fetchScriptTemplates } = await import("./persistence");
     const templates = await fetchScriptTemplates();
     return templates.map((t) => ({
       id: t.id,
@@ -78,22 +67,11 @@ export async function listScriptTemplates(): Promise<
 }
 
 /**
- * 获取指定的脚本模板（从缓存或 FastAPI）
+ * 获取指定的脚本模板
  */
 export async function getScriptTemplate(
   templateId: string,
 ): Promise<{ name: string; description?: string; code: string } | null> {
-  // 先检查缓存
-  const cached = scriptTemplateCache.get(templateId);
-  if (cached) {
-    return {
-      name: cached.name,
-      description: cached.description,
-      code: cached.code,
-    };
-  }
-
-  // 从 FastAPI 加载
   return await loadScriptTemplate(templateId);
 }
 
@@ -104,13 +82,13 @@ export async function downloadScriptToLocal(
   templateId: string,
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    // 从 FastAPI 加载脚本模板
+    // 从 FastAPI 加载脚本模板（总是获取最新版本）
     const template = await getScriptTemplate(templateId);
     if (!template) {
       return { success: false, message: "脚本模板不存在" };
     }
 
-    // 保存到本地文件
+    // 保存到本地文件（覆盖旧文件）
     saveScriptToFile(templateId, template.code);
 
     console.log(`[script-engine] 脚本已下载到本地: ${templateId}`);
@@ -168,17 +146,6 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
   const template = await getScriptTemplate(task.scriptTemplateId);
   if (!template) {
     throw new Error(`脚本模板不存在: ${task.scriptTemplateId}`);
-  }
-
-  // 确保脚本已下载到本地（如果未下载则先下载）
-  if (!isScriptDownloaded(task.scriptTemplateId)) {
-    console.log(
-      `[script-engine] 脚本未下载，正在下载: ${task.scriptTemplateId}`,
-    );
-    const downloadResult = await downloadScriptToLocal(task.scriptTemplateId);
-    if (!downloadResult.success) {
-      throw new Error(`脚本下载失败: ${downloadResult.message || "未知错误"}`);
-    }
   }
 
   // 构建辅助工具函数
@@ -248,7 +215,9 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
 
   // 场景脚本整个执行周期内采集监控数据
   startMonitoring(task, task.monitorConfig);
-
+  setTimeout(() => {
+    console.log("5秒后执行");
+  }, 5000);
   try {
     // 动态执行脚本代码（下载到本地后执行）
     await executeScriptCode(

@@ -21,9 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
-export interface MonitoringConfigProps {
+interface MonitoringConfigProps {
   config: {
-    interval?: string;
     enableAlerts: boolean;
     thresholds: AlertThresholdsConfig;
   };
@@ -34,7 +33,8 @@ export function MonitoringConfigPanel({
   config,
   onConfigChange,
 }: MonitoringConfigProps) {
-  const { interval, enableAlerts, thresholds } = config;
+  const { enableAlerts, thresholds } = config;
+  const [interval, setInterval] = useState<string>("1");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +48,13 @@ export function MonitoringConfigPanel({
       setLoading(true);
       const savedConfig = await window.api.loadMonitoringConfig();
       if (savedConfig) {
-        onConfigChange(savedConfig);
+        if (savedConfig.interval) {
+          setInterval(savedConfig.interval);
+        }
+        onConfigChange({
+          enableAlerts: savedConfig.enableAlerts ?? false,
+          thresholds: savedConfig.thresholds ?? thresholds,
+        });
       }
     } catch (error) {
       console.error("加载监控配置失败:", error);
@@ -61,7 +67,10 @@ export function MonitoringConfigPanel({
     try {
       setSaving(true);
 
-      const result = await window.api.saveMonitoringConfig(config);
+      const result = await window.api.saveMonitoringConfig({
+        ...config,
+        interval,
+      });
       if (result.success) {
         toast.success("配置已保存");
       } else {
@@ -76,9 +85,6 @@ export function MonitoringConfigPanel({
   };
 
   const handleReset = async () => {
-    if (!confirm("确定要重置为默认配置吗？")) {
-      return;
-    }
     try {
       setSaving(true);
       const result = await window.api.resetMonitoringConfig();
@@ -122,12 +128,9 @@ export function MonitoringConfigPanel({
             <label className="text-sm text-muted-foreground">采样间隔</label>
             <Select
               value={interval && interval !== "" ? interval : "1"}
-              onValueChange={(value) =>
-                onConfigChange({
-                  ...config,
-                  interval: value,
-                })
-              }
+              onValueChange={(value) => {
+                setInterval(value);
+              }}
             >
               <SelectTrigger className="w-30">
                 <SelectValue />
@@ -148,12 +151,9 @@ export function MonitoringConfigPanel({
               type="number"
               className="w-30 text-xs text-center"
               value={interval ?? ""}
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  interval: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                setInterval(e.target.value);
+              }}
               placeholder="1"
             />
           </div>

@@ -193,13 +193,29 @@ export async function startTask(
       stopSceneScript(taskId);
 
       const t = await getTask(taskId);
-      if (t) {
-        t.status = "error";
-        t.errorMessage = errorMessage;
-        tasks.set(t.id, t);
-        persistUpdateTaskStatus(taskId, "error", errorMessage).catch((err) => {
-          console.warn("[task] failed to persist task status", taskId, err);
-        });
+      if (t && t.status === "running") {
+        // 检查是否是主动中止任务导致的错误
+        const isAborted = errorMessage.toLowerCase().includes("aborted");
+
+        if (isAborted) {
+          // 如果是主动中止，设置为 finished 而不是 error
+          t.status = "finished";
+          t.errorMessage = undefined;
+          tasks.set(t.id, t);
+          persistUpdateTaskStatus(taskId, "finished").catch((err) => {
+            console.warn("[task] failed to persist task status", taskId, err);
+          });
+        } else {
+          // 真正的错误，设置为 error 状态
+          t.status = "error";
+          t.errorMessage = errorMessage;
+          tasks.set(t.id, t);
+          persistUpdateTaskStatus(taskId, "error", errorMessage).catch(
+            (err) => {
+              console.warn("[task] failed to persist task status", taskId, err);
+            },
+          );
+        }
       }
     });
 
@@ -218,16 +234,27 @@ export async function stopTask(
     return { success: false, message: "task not found" };
   }
 
+  // 如果任务已经停止或出错，不需要再次停止
+  if (task.status !== "running") {
+    return { success: true, message: "task already stopped" };
+  }
+
   stopMonitoring(taskId);
   stopSceneScript(taskId);
 
-  task.status = "finished";
-  tasks.set(task.id, task);
+  // 只有在任务正在运行时才更新状态为 finished
+  // 如果任务已经出错，保持 error 状态
+  if (task.status === "running") {
+    task.status = "finished";
+    // 清除错误信息（如果有）
+    task.errorMessage = undefined;
+    tasks.set(task.id, task);
 
-  // 异步同步状态到 FastAPI
-  persistUpdateTaskStatus(taskId, "finished").catch((error) => {
-    console.warn("[task] failed to persist task status", taskId, error);
-  });
+    // 异步同步状态到 FastAPI
+    persistUpdateTaskStatus(taskId, "finished").catch((error) => {
+      console.warn("[task] failed to persist task status", taskId, error);
+    });
+  }
 
   return { success: true };
 }
