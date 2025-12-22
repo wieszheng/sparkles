@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -92,10 +92,6 @@ const monitorMetrics: MonitorMetric[] = [
   },
 ];
 
-interface ComparisonAnalysisProps {
-  tasks: MonitoringTask[];
-  onClose?: () => void;
-}
 
 interface TaskStatistics {
   taskId: string;
@@ -123,7 +119,8 @@ interface ComparisonResult {
   };
 }
 
-export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
+export function ComparisonAnalysis() {
+  const [tasks, setTasks] = useState<MonitoringTask[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [comparisonResult, setComparisonResult] =
@@ -133,6 +130,44 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
     {},
   );
   const [viewMode, setViewMode] = useState<"table" | "charts">("charts");
+
+  // 加载任务列表
+  const loadTasks = async () => {
+    try {
+      const backendTasks = await window.api.listTasks();
+      // 转换为 MonitoringTask 格式
+      const monitoringTasks: MonitoringTask[] = backendTasks.map(
+        (t, index) => ({
+          id: index + 1,
+          name: t.name,
+          script: t.scriptTemplateId,
+          app: t.packageName,
+          status:
+            t.status === "running"
+              ? "running"
+              : t.status === "finished"
+                ? "completed"
+                : t.status === "error"
+                  ? "error"
+                  : "pending",
+          createdAt: new Date(t.createdAt).toISOString().split("T")[0],
+          deprecated: false,
+          reportData: true,
+          backendId: t.id,
+          errorMessage: t.errorMessage,
+          archived: (t as any).archived,
+        }),
+      );
+      setTasks(monitoringTasks);
+    } catch (error) {
+      console.error("加载任务列表失败:", error);
+    }
+  };
+
+  // 组件挂载时加载任务列表
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
   // 已完成的任务
   const completedTasks = useMemo(() => {
@@ -167,8 +202,10 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
       const samples = await window.api.getTaskMetrics(taskId);
       setTaskSamplesData((prev) => ({
         ...prev,
+
         [taskId]: samples,
       }));
+      console.log(`加载任务 ${taskId} 的监控数据成功`, samples);
       return samples;
     } catch (error) {
       console.error(`加载任务 ${taskId} 的监控数据失败:`, error);
@@ -207,6 +244,7 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
         data.temperature.push({ time, value: sample.deviceTemperature });
       }
       if (sample.powerConsumption != null) {
+        console.log("powerConsumption", sample.powerConsumption);
         data.power.push({ time, value: sample.powerConsumption });
       }
       if (sample.networkUpSpeed != null || sample.networkDownSpeed != null) {
@@ -215,7 +253,7 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
         data.network.push({ time, value: networkValue });
       }
     });
-
+    console.log("data", data);
     return data;
   };
 
@@ -262,6 +300,18 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
       const max = Math.max(...values);
       const min = Math.min(...values);
       const current = values[values.length - 1] || 0;
+
+      // 检查指标是否真的有数据（区分"真实数据为0"和"没有数据"）
+      const hasRealData = values.some(v => v > 0) || 
+                        (key === 'cpu' && values.some(v => v >= 0)) ||
+                        (key === 'memory' && values.some(v => v >= 0)) ||
+                        (key === 'power' && values.some(v => v >= 0)) ||
+                        (key === 'temperature' && values.some(v => v > 0)) ||
+                        (key === 'fps' && values.some(v => v > 0)) ||
+                        (key === 'gpu' && values.some(v => v > 0));
+
+      // 对于网络流量，需要检查是否有真实的非零数据点
+      if (!hasRealData) return;
 
       metrics[key] = {
         avg: Number(avg.toFixed(2)),
@@ -329,7 +379,23 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
             taskName: stat.taskName,
             value: stat.metrics[metricKey]?.avg || 0,
           }))
-          .filter((item) => item.value > 0);
+          .filter((item) => {
+            // 对于某些指标，0值是有意义的，需要保留
+            // 只过滤掉完全为null、undefined或NaN的情况
+            return item.value !== null && 
+                   item.value !== undefined && 
+                   !isNaN(item.value) && 
+                   item.value >= 0;
+          })
+          .filter((item) => {
+            // 进一步检查指标是否真的有数据
+            // 网络流量需要有真正的非零数据点
+            if (metricKey === 'network') {
+              return item.value > 0;
+            }
+            // 其他指标允许0值，但需要至少有一个任务有大于0的数据
+            return true;
+          });
 
         if (metricValues.length === 0) return;
 
@@ -1537,18 +1603,18 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
 
       {/* 报告对话框 */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogContent className="min-w-3xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>对比分析报告</DialogTitle>
             <DialogDescription>
               生成时间: {new Date().toLocaleString("zh-CN")}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 pr-4">
+          <div>
             {comparisonResult && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <h4 className="font-medium mb-2">参与对比的任务</h4>
+                  <h4 className="font-medium mb-1">参与对比的任务</h4>
                   <ul className="list-disc list-inside text-sm space-y-1">
                     {comparisonResult.tasks.map((task) => (
                       <li key={task.taskId}>{task.taskName}</li>
@@ -1556,20 +1622,63 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">对比结果摘要</h4>
-                  <div className="space-y-2 text-sm">
+                  <h4 className="font-medium mb-1">对比结果摘要</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {Object.keys(comparisonResult.comparison).map(
                       (metricKey) => {
                         const comp = comparisonResult.comparison[metricKey];
+                        const metric = monitorMetrics.find(
+                          (m) => m.key === metricKey,
+                        );
                         return (
-                          <div key={metricKey} className="border rounded p-2">
-                            <div className="font-medium">
-                              {metricKey.toUpperCase()}
+                          <div key={metricKey} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center gap-2 font-medium">
+                              {metric && (
+                                <metric.icon
+                                  className="h-4 w-4"
+                                  style={{ color: metric.color }}
+                                />
+                              )}
+                              <span className="text-sm">{metric?.label || metricKey.toUpperCase()}</span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              最佳: {comp.best.taskName} ({comp.best.value}) |
-                              最差: {comp.worst.taskName} ({comp.worst.value}) |
-                              平均: {comp.avg} | 方差: {comp.variance}
+                            <div className="space-y-1 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">最佳:</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium text-green-600">
+                                    {comp.best.taskName}
+                                  </span>
+                                  <span className="text-green-600">
+                                    ({comp.best.value})
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">最差:</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium text-red-600">
+                                    {comp.worst.taskName}
+                                  </span>
+                                  <span className="text-red-600">
+                                    ({comp.worst.value})
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">平均:</span>
+                                <span className="font-medium">
+                                  {comp.avg}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">方差:</span>
+                                <span className="text-muted-foreground">
+                                  {comp.variance}
+                                  <span className="ml-1 text-[10px]">
+                                    (越小越稳定)
+                                  </span>
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1579,18 +1688,20 @@ export function ComparisonAnalysis({ tasks }: ComparisonAnalysisProps) {
                 </div>
               </div>
             )}
-          </ScrollArea>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
+              size="sm"
               onClick={generateHTMLReport}
-              className="gap-2"
+              className="gap-1"
             >
               <Download className="h-4 w-4" />
               导出 HTML 报告
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setShowReportDialog(false)}
             >
               关闭

@@ -232,7 +232,7 @@ export function ScriptMarket() {
               {filteredScripts.map((script) => (
                 <div
                   key={script.id}
-                  className="bg-card/70 rounded-lg border border-border/30 p-4 hover:border-primary/50 transition-all hover:shadow-sm"
+                  className="bg-card/70 rounded-lg border border-border/30 p-4 transition-all shadow-sm"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">

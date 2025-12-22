@@ -33,6 +33,7 @@ import { TaskStatusBadge } from "./task-status-badge";
 interface TaskManagementProps {
   onViewTask: (task: MonitoringTask) => void;
 }
+
 export function TaskManagement({ onViewTask }: TaskManagementProps) {
   const [tasks, setTasks] = useState<MonitoringTask[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +63,7 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
           reportData: true,
           backendId: t.id,
           errorMessage: t.errorMessage,
-          archived: (t as any).archived,
+          archived: t.archived,
         }),
       );
       setTasks(monitoringTasks);
@@ -164,7 +165,7 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
           {filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="rounded-md border border-border/30 bg-muted/50 p-3 hover:border-border/50 transition-colors"
+              className="bg-card/70 rounded-lg border border-border/30 p-4 shadow-sm"
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">

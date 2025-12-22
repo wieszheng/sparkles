@@ -8,9 +8,10 @@ import { startMonitoring, stopMonitoring } from "./monitor";
 import {
   fetchScriptTemplate,
   fetchScriptTemplates,
+  matchImage,
   matchImageTemplate,
 } from "./persistence";
-import { startApp, stopApp } from "./action.ts";
+import { clickCmd, startApp, stopApp } from "./action.ts";
 import { getDeviceKey } from "./index.ts";
 
 // 任务中止标志
@@ -162,7 +163,7 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
     },
     isAborted: () => flag.aborted,
     matchImageTemplate: async (
-      screenshotBase64: string,
+      screenshotBase64: string | null,
       templateBase64: string,
       threshold: number = 0.8,
     ) => {
@@ -177,9 +178,17 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       }
       return result;
     },
+    matchImage: async (templateBase64: string, threshold: number = 0.8) => {
+      ensureNotAborted();
+      const result = await matchImage(templateBase64, threshold);
+      if (!result) {
+        return { found: false, confidence: 0 };
+      }
+      return result;
+    },
     tap: async (x: number, y: number) => {
       ensureNotAborted();
-      // await tap(x, y);
+      await clickCmd(getDeviceKey()!, "click", { x, y });
       console.log("tap", x, y);
     },
     swipe: async (
@@ -193,9 +202,9 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       // await swipe(x1, y1, x2, y2, duration);
       console.log("tap", x1, y1, x2, y2, duration);
     },
-    inputText: async (text: string) => {
+    inputText: async (x: number, y: number, text: string) => {
       ensureNotAborted();
-      // await inputText(text);
+      await clickCmd(getDeviceKey()!, "input", { x, y, text });
       console.log("inputText", text);
     },
     launchApp: async (packageName: string) => {

@@ -83,7 +83,16 @@ interface ScriptHelpers {
   isAborted: () => boolean;
   // 图片模板匹配
   matchImageTemplate: (
-    screenshotBase64: string,
+    screenshotBase64: string | null,
+    templateBase64: string,
+    threshold?: number,
+  ) => Promise<{
+    found: boolean;
+    confidence: number;
+    position?: { x: number; y: number; width: number; height: number };
+    center?: { x: number; y: number };
+  }>;
+  matchImage: (
     templateBase64: string,
     threshold?: number,
   ) => Promise<{
@@ -101,7 +110,7 @@ interface ScriptHelpers {
     y2: number,
     duration?: number,
   ) => Promise<void>;
-  inputText: (text: string) => Promise<void>;
+  inputText: (x: number, y: number, text: string) => Promise<void>;
   // 应用相关
   launchApp: (packageName: string) => Promise<void>;
   stopApp: (packageName: string) => Promise<void>;

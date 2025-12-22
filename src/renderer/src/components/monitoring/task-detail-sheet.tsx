@@ -119,9 +119,10 @@ export function TaskDetailSheet({
   task,
 }: TaskDetailSheetProps) {
   const [copied, setCopied] = useState(false);
-  console.log("TaskDetailSheet task", task);
 
   if (!task) return null;
+  
+  console.log("TaskDetailSheet task", task);
   // 复制错误信息到剪贴板
   const handleCopyError = async () => {
     if (task.errorMessage) {

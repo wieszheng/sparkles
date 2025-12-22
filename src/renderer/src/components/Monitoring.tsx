@@ -404,7 +404,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
           </TabsContent>
 
           <TabsContent value="comparison" className="mt-0 h-full">
-            <ComparisonAnalysis tasks={tasks} />
+            <ComparisonAnalysis />
           </TabsContent>
 
           <TabsContent value="config" className="mt-0 flex-1 overflow-auto">

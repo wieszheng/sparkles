@@ -84,12 +84,18 @@ export function MultiSelectCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
+        <div
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-8.5 flex items-center px-3 py-2 bg-transparent"
+          aria-haspopup="listbox"
+          className="w-full justify-between h-8.5 flex items-center px-3 py-2 bg-transparent border border-input rounded-md text-sm shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setOpen(!open);
+            }
+          }}
         >
           <div className="flex flex-wrap gap-1 flex-grow">
             {selectedItems.length > 0 ? (
@@ -119,19 +125,18 @@ export function MultiSelectCombobox({
           </div>
           <div className="flex items-center gap-2">
             {selected.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0 opacity-50 hover:opacity-100"
+              <button
+                type="button"
+                className="h-6 w-6 shrink-0 opacity-50 hover:opacity-100 flex items-center justify-center rounded-sm hover:bg-accent transition-colors"
                 onClick={handleClearAll}
                 aria-label="Clear all selections"
               >
                 <XCircle className="h-4 w-4" />
-              </Button>
+              </button>
             )}
             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
           </div>
-        </Button>
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>

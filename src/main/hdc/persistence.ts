@@ -1,49 +1,16 @@
-import { FormData } from "formdata-node";
-import { json } from "node:stream/consumers";
+import { getDeviceKey, screencap } from "./index.ts";
+
 const FASTAPI_ENDPOINT =
   process.env.FASTAPI_ENDPOINT || "http://120.48.31.197:8000/api/v1/monitor";
 
 /**
- * 上传文件到 FastAPI
- */
-async function postFile(
-  path: string,
-  files: { name: string; data: Buffer; filename: string }[],
-): Promise<any> {
-  const url = `${FASTAPI_ENDPOINT}${path}`;
-  try {
-    const form = new FormData();
-
-    files.forEach((file) => {
-      form.append(file.name, file.data, file.filename);
-    });
-
-    const response = await fetch(url, {
-      method: "POST",
-      body: form as any,
-    });
-
-    if (!response.ok) {
-      console.warn(
-        "[persistence] POST file failed",
-        url,
-        response.status,
-        response.statusText,
-      );
-      return null;
-    }
-    return await response.json();
-  } catch (error) {
-    console.warn("[persistence] failed to POST file", url, error);
-    return null;
-  }
-}
-
-/**
  * 图片模板匹配（调用 FastAPI 接口）
+ * @param screenshotBase64 截图 base64（可选，如果不提供则自动截图）
+ * @param templateBase64 模板图片 base64
+ * @param threshold 匹配阈值（0-1，默认0.8）
  */
 export async function matchImageTemplate(
-  screenshotBase64: string,
+  screenshotBase64: string | null,
   templateBase64: string,
   threshold: number = 0.8,
 ): Promise<{
@@ -53,17 +20,67 @@ export async function matchImageTemplate(
   center?: { x: number; y: number };
 } | null> {
   try {
+    let screenshot: string;
 
+    // 如果没有提供截图，自动截图
+    if (!screenshotBase64) {
+      screenshot = await screencap(getDeviceKey()!, false);
+    } else {
+      screenshot = screenshotBase64;
+    }
 
-    const result:any = await postJson("/image-template/match?threshold=" + threshold, {
-      screenshot: screenshotBase64,
-      template: templateBase64,
+    const url = `${FASTAPI_ENDPOINT}/image-template/match`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        screenshot,
+        template: templateBase64,
+        threshold,
+      }),
     });
-    return result;
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(
+        "[persistence] matchImageTemplate failed",
+        url,
+        response.status,
+        response.statusText,
+        errorText,
+      );
+      return null;
+    }
+
+    return (await response.json()) as {
+      found: boolean;
+      confidence: number;
+      position?: { x: number; y: number; width: number; height: number };
+      center?: { x: number; y: number };
+    };
   } catch (error) {
     console.error("[persistence] matchImageTemplate failed", error);
     return null;
   }
+}
+
+/**
+ * 简化的图片模板匹配（只需要提供模板数据，自动截图匹配）
+ * @param templateBase64 模板图片 base64
+ * @param threshold 匹配阈值（0-1，默认0.8）
+ */
+export async function matchImage(
+  templateBase64: string,
+  threshold: number = 0.8,
+): Promise<{
+  found: boolean;
+  confidence: number;
+  position?: { x: number; y: number; width: number; height: number };
+  center?: { x: number; y: number };
+} | null> {
+  return matchImageTemplate(null, templateBase64, threshold);
 }
 
 async function getJson<T = unknown>(path: string): Promise<T | null> {

@@ -57,20 +57,30 @@ export async function goHome(connectKey: string): Promise<string | string[]> {
 
 export async function clickCmd(
   connectKey: string,
-  clickType: "click" | "double" | "long",
+  clickType: "click" | "double" | "long" | "input",
   position: {
     x: number;
     y: number;
+    text?: string;
   },
 ) {
   const client = getClient();
   assert(
-    clickType === "click" || clickType === "double" || clickType === "long",
+    clickType === "input" ||
+      clickType === "click" ||
+      clickType === "double" ||
+      clickType === "long",
     "Invalid click type",
   );
   assert(position.x >= 0 && position.y >= 0, "Invalid position");
 
   switch (clickType) {
+    case "input":
+      return await shell(
+        client,
+        connectKey,
+        `uitest uiInput inputText ${position.x} ${position.y} ${position.text}`,
+      );
     case "long":
       return await shell(
         client,
