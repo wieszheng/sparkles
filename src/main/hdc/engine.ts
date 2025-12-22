@@ -13,9 +13,6 @@ import {
 import { startApp, stopApp } from "./action.ts";
 import { getDeviceKey } from "./index.ts";
 
-// 本地脚本文件缓存（模板ID -> 文件路径）
-const scriptFileCache = new Map<string, string>();
-
 // 任务中止标志
 const taskAbortFlags = new Map<string, { aborted: boolean }>();
 
@@ -212,12 +209,10 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       console.log("stopApp", packageName);
     },
   };
-
+  console.log("runSceneScript", task);
   // 场景脚本整个执行周期内采集监控数据
   startMonitoring(task, task.monitorConfig);
-  setTimeout(() => {
-    console.log("5秒后执行");
-  }, 5000);
+  await helpers.sleep(5000);
   try {
     // 动态执行脚本代码（下载到本地后执行）
     await executeScriptCode(
@@ -256,15 +251,14 @@ module.exports = async function(task, helpers) {
 
   // 写入文件
   writeFileSync(scriptPath, moduleCode, "utf-8");
-
-  // 缓存文件路径
-  scriptFileCache.set(templateId, scriptPath);
+  console.log(`[ScriptEngine] 保存脚本到: ${scriptPath}`);
+  console.log(`[ScriptEngine] 脚本内容: ${moduleCode}`);
 
   return scriptPath;
 }
 
 /**
- * 执行脚本代码（从本地文件加载并执行）
+ * 执行脚本代码（从本地文件加载并执行
  */
 async function executeScriptCode(
   templateId: string,
@@ -276,11 +270,7 @@ async function executeScriptCode(
     // 保存脚本到本地文件
     const scriptPath = saveScriptToFile(templateId, code);
 
-    // 清除 require 缓存（如果文件已存在），确保使用最新代码
-    if (require.cache[scriptPath]) {
-      delete require.cache[scriptPath];
-    }
-
+    delete require.cache[require.resolve(scriptPath)];
     // 动态加载脚本模块
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const scriptModule = require(scriptPath);

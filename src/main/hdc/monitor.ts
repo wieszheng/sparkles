@@ -39,7 +39,6 @@ export async function collectMetricsForTask(
 
   try {
     // 使用 SP_daemon 采集性能数据
-    console.log("collectMetricsForTask", task.packageName, task.metrics);
     const rawData = await spDaemon.collect({
       N: 1,
       PKG: task.packageName,

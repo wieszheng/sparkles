@@ -1,6 +1,7 @@
 import { FormData } from "formdata-node";
+import { json } from "node:stream/consumers";
 const FASTAPI_ENDPOINT =
-  process.env.FASTAPI_ENDPOINT || "http://127.0.0.1:8000";
+  process.env.FASTAPI_ENDPOINT || "http://120.48.31.197:8000/api/v1/monitor";
 
 /**
  * 上传文件到 FastAPI
@@ -52,21 +53,12 @@ export async function matchImageTemplate(
   center?: { x: number; y: number };
 } | null> {
   try {
-    const screenshotBuffer = Buffer.from(screenshotBase64, "base64");
-    const templateBuffer = Buffer.from(templateBase64, "base64");
 
-    const result = await postFile(
-      "/image-template/match?threshold=" + threshold,
-      [
-        {
-          name: "screenshot",
-          data: screenshotBuffer,
-          filename: "screenshot.png",
-        },
-        { name: "template", data: templateBuffer, filename: "template.png" },
-      ],
-    );
 
+    const result:any = await postJson("/image-template/match?threshold=" + threshold, {
+      screenshot: screenshotBase64,
+      template: templateBase64,
+    });
     return result;
   } catch (error) {
     console.error("[persistence] matchImageTemplate failed", error);

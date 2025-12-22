@@ -76,7 +76,7 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
     // 定期刷新任务列表
     // const interval = setInterval(() => {
     //   void loadTasks();
-    // }, 3000);
+    // }, 1000);
     // return () => clearInterval(interval);
   }, []);
 

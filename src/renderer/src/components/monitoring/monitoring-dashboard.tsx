@@ -4,6 +4,7 @@ import { Plus, Square, Zap } from "lucide-react";
 
 import { MonitoringChart } from "./monitoring-chart";
 import { TaskStatusBadge } from "./task-status-badge";
+// import { useEffect } from "react";
 
 interface MonitoringDashboardProps {
   tasks: MonitoringTask[];
@@ -17,6 +18,9 @@ export function MonitoringDashboard({
   onToggleTaskStatus,
 }: MonitoringDashboardProps) {
   const runningTasks = tasks.filter((t) => t.status === "running");
+  console.log("MonitoringDashboard", tasks);
+
+  // useEffect(() => {}, [tasks]);
 
   if (runningTasks.length === 0) {
     return (

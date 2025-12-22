@@ -141,6 +141,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
   );
 
   const [enableAlerts, setEnableAlerts] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const loadTasks = async () => {
     const data = await window.api.listTasks();
@@ -207,7 +208,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
     const timer = setInterval(() => {
       void loadTasks();
-    }, 3000);
+    }, 1000);
 
     return () => clearInterval(timer);
   }, [backendTasks]);
@@ -237,7 +238,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
     const id = `${Date.now()}`;
     try {
-      await window.api.createTask({
+      const task = await window.api.createTask({
         id,
         name: taskData.name,
         packageName: taskData.app,
@@ -251,10 +252,20 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
           : undefined,
       });
       setOpenTaskDialog(false);
-      await loadTasks();
+
+      // ✅ 关键改动：初始化新任务的空数据数组，防止图表无法展示
+      setMetricsMap((prev) => ({
+        ...prev,
+        [id]: [],
+      }));
+
+      console.log("任务已创建:", task);
+
       // 新建任务后主动启动执行
       await window.api.startTask(id);
+
       await loadTasks();
+      setActiveTab("dashboard");
     } catch (error) {
       console.error("创建任务失败:", error);
     }
@@ -304,7 +315,11 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs defaultValue="dashboard" className="flex-1 flex flex-col h-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex-1 flex flex-col h-full"
+      >
         {/* 顶部导航 */}
         <div className="sticky top-0 z-10 border-b border-border/40 bg-background/95 backdrop-blur-sm">
           <div className="px-1">

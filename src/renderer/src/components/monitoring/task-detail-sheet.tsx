@@ -120,6 +120,7 @@ export function TaskDetailSheet({
 }: TaskDetailSheetProps) {
   const [copied, setCopied] = useState(false);
   console.log("TaskDetailSheet task", task);
+
   if (!task) return null;
   // 复制错误信息到剪贴板
   const handleCopyError = async () => {
@@ -152,173 +153,178 @@ export function TaskDetailSheet({
     : [];
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl bg-card p-0 rounded-l-lg">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl bg-card p-0 rounded-l-lg"
+      >
         <div className="flex flex-col h-full">
           <SheetHeader className="flex-shrink-0 p-3.5">
             <SheetTitle>{task.name}</SheetTitle>
-            <SheetDescription>
-              任务详情和监控数据
-            </SheetDescription>
+            <SheetDescription>任务详情和监控数据</SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 min-h-0">
             <ScrollArea className="h-full">
               <div className="px-3 pb-6 space-y-4">
-          {/* 错误信息展示 */}
-          {task.status === "error" && task.errorMessage && (
-            <div className="p-2 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-sm flex items-center gap-1 text-red-700 dark:text-red-400 font-medium">
-                  <AlertCircle className="h-4 w-4" />
-                  执行错误
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopyError}
-                  className="h-7 text-xs gap-1.5"
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                      已复制
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      复制错误
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="rounded-md bg-white dark:bg-gray-900 p-3 border border-red-200 dark:border-red-900/30">
-                <pre className="text-xs font-mono text-red-800 dark:text-red-300 whitespace-pre-wrap break-words overflow-x-auto">
-                  {task.errorMessage}
-                </pre>
-              </div>
-              <p className="text-xs text-red-600 dark:text-red-400">
-                任务因执行错误已自动停止。请检查脚本代码或联系技术支持。
-              </p>
-            </div>
-          )}
-          {/* 任务信息 */}
-          <div className="p-3 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-muted-foreground">状态</span>
-              <TaskStatusBadge status={task.status} />
-            </div>
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-muted-foreground">脚本</span>
-              <span>{task.script}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-muted-foreground">应用</span>
-              <span>{task.app}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-muted-foreground">创建时间</span>
-              <span>{task.createdAt}</span>
-            </div>
-            {task.startTime && (
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-muted-foreground">开始时间</span>
-                <span>{task.startTime}</span>
-              </div>
-            )}
-            {task.endTime && (
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-muted-foreground">结束时间</span>
-                <span>{task.endTime}</span>
-              </div>
-            )}
-          </div>
-          {/* 监控项数据统计 */}
-          {metricStats.length > 0 && (
-            <div className="p-2 space-y-3">
-              <div className="text-sm font-semibold">监控项数据</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {metricStats.map(({ key, metric, stats }) => {
-                  const Icon = metric.icon;
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-lg border border-border/30 shadow-sm bg-background/30 shrink-0 p-3 space-y-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          className="h-4 w-4"
-                          style={{ color: metric.color }}
-                        />
-                        <span className="text-xs font-medium">
-                          {metric.label}
-                        </span>
+                {/* 错误信息展示 */}
+                {task.status === "error" && task.errorMessage && (
+                  <div className="p-2 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm flex items-center gap-1 text-red-700 dark:text-red-400 font-medium">
+                        <AlertCircle className="h-4 w-4" />
+                        执行错误
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">
-                            当前值
-                          </span>
-                          <div className="text-sm font-semibold mt-0.5">
-                            {stats.current} {metric.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            平均值
-                          </span>
-                          <div className="text-sm font-semibold mt-0.5">
-                            {stats.avg} {metric.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            最大值
-                          </span>
-                          <div className="text-sm font-semibold mt-0.5">
-                            {stats.max} {metric.unit}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            最小值
-                          </span>
-                          <div className="text-sm font-semibold mt-0.5">
-                            {stats.min} {metric.unit}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">
-                          样本数: {stats.count}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {/* 监控图表 */}
-          {task.data && (
-            <div className="space-y-3 p-2">
-              <h3 className="text-sm font-semibold">监控数据</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {task.data &&
-                  Object.entries(task.data).map(([key, data]) => {
-                    if (!data || !Array.isArray(data) || data.length === 0)
-                      return null;
-                    return (
-                      <div
-                        key={key}
-                        className="rounded-lg border border-border/50 p-3 shadow-sm bg-background/30"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyError}
+                        className="h-7 text-xs gap-1.5"
                       >
-                        <MonitoringChart metricKey={key} data={data} />
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
+                        {copied ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            复制错误
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="rounded-md bg-white dark:bg-gray-900 p-3 border border-red-200 dark:border-red-900/30">
+                      <pre className="text-xs font-mono text-red-800 dark:text-red-300 whitespace-pre-wrap break-words overflow-x-auto">
+                        {task.errorMessage}
+                      </pre>
+                    </div>
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      任务因执行错误已自动停止。请检查脚本代码或联系技术支持。
+                    </p>
+                  </div>
+                )}
+                {/* 任务信息 */}
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-muted-foreground">状态</span>
+                    <TaskStatusBadge status={task.status} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-muted-foreground">脚本</span>
+                    <span>{task.script}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-muted-foreground">应用</span>
+                    <span>{task.app}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-muted-foreground">创建时间</span>
+                    <span>{task.createdAt}</span>
+                  </div>
+                  {task.startTime && (
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-muted-foreground">开始时间</span>
+                      <span>{task.startTime}</span>
+                    </div>
+                  )}
+                  {task.endTime && (
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-muted-foreground">结束时间</span>
+                      <span>{task.endTime}</span>
+                    </div>
+                  )}
+                </div>
+                {/* 监控项数据统计 */}
+                {metricStats.length > 0 && (
+                  <div className="p-2 space-y-3">
+                    <div className="text-sm font-semibold">监控项数据</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {metricStats.map(({ key, metric, stats }) => {
+                        const Icon = metric.icon;
+                        return (
+                          <div
+                            key={key}
+                            className="rounded-lg border border-border/30 shadow-sm bg-background/30 shrink-0 p-3 space-y-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon
+                                className="h-4 w-4"
+                                style={{ color: metric.color }}
+                              />
+                              <span className="text-xs font-medium">
+                                {metric.label}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">
+                                  当前值
+                                </span>
+                                <div className="text-sm font-semibold mt-0.5">
+                                  {stats.current} {metric.unit}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">
+                                  平均值
+                                </span>
+                                <div className="text-sm font-semibold mt-0.5">
+                                  {stats.avg} {metric.unit}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">
+                                  最大值
+                                </span>
+                                <div className="text-sm font-semibold mt-0.5">
+                                  {stats.max} {metric.unit}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">
+                                  最小值
+                                </span>
+                                <div className="text-sm font-semibold mt-0.5">
+                                  {stats.min} {metric.unit}
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">
+                                样本数: {stats.count}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* 监控图表 */}
+                {task.data && (
+                  <div className="space-y-3 p-2">
+                    <h3 className="text-sm font-semibold">监控数据</h3>
+                    <div className="grid grid-cols-1 gap-2">
+                      {task.data &&
+                        Object.entries(task.data).map(([key, data]) => {
+                          if (
+                            !data ||
+                            !Array.isArray(data) ||
+                            data.length === 0
+                          )
+                            return null;
+                          return (
+                            <div
+                              key={key}
+                              className="rounded-lg border border-border/50 p-3 shadow-sm bg-background/30"
+                            >
+                              <MonitoringChart metricKey={key} data={data} />
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </div>
