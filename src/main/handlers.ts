@@ -1,4 +1,5 @@
-import { BrowserWindow, dialog, ipcMain } from "electron";
+import * as os from "os";
+import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import log from "electron-log";
 import { getSettingsStore } from "./store";
 import {
@@ -539,6 +540,27 @@ export function initIpcHandlers(): void {
         success: false,
         error: error instanceof Error ? error.message : "未知错误",
       };
+    }
+  });
+
+  // 打开日志目录
+  ipcMain.handle("open-log-directory", async (_, taskId?: string) => {
+    let logDir = path.join(os.tmpdir(), "sparkles-logs");
+    if (taskId) {
+      logDir = path.join(logDir, taskId);
+    }
+    try {
+      if (taskId && !(await fs.pathExists(logDir))) {
+        // 如果指定任务的目录不存在，尝试打开父目录
+        logDir = path.join(os.tmpdir(), "sparkles-logs");
+      }
+
+      await fs.ensureDir(logDir);
+      await shell.openPath(logDir);
+      return { success: true };
+    } catch (error) {
+      log.error("Failed to open log directory:", error);
+      return { success: false, error: String(error) };
     }
   });
 

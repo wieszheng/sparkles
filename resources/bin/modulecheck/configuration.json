@@ -1,0 +1,45 @@
+{
+  "title": "JSON schema for configuration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "configuration": {
+      "description": "Indicates the configuration.",
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "fontSizeScale",
+          "fontSizeMaxScale"
+        ]
+      },
+      "required": [
+      ],
+      "properties": {
+        "fontSizeScale": {
+          "description": "Specifies whether the font size of the application follow the system settings.",
+          "type": "string",
+          "enum": [
+            "followSystem",
+            "nonFollowSystem"
+          ]
+        },
+        "fontSizeMaxScale": {
+          "description": "Indicates the max font size scale of application.",
+          "type": "string",
+          "enum": [
+            "1",
+            "1.15",
+            "1.3",
+            "1.45",
+            "1.75",
+            "2",
+            "3.2"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "configuration"
+  ]
+}

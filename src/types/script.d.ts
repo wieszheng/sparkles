@@ -101,7 +101,7 @@ interface ScriptHelpers {
     position?: { x: number; y: number; width: number; height: number };
     center?: { x: number; y: number };
   }>;
-  // UI 操作相关
+  // UI 操作相关（旧版本，保留兼容性）
   tap: (x: number, y: number) => Promise<void>;
   swipe: (
     x1: number,
@@ -114,6 +114,63 @@ interface ScriptHelpers {
   // 应用相关
   launchApp: (packageName: string) => Promise<void>;
   stopApp: (packageName: string) => Promise<void>;
+
+  // UI模拟操作 - 点击相关
+  uiClick: (x: number, y: number) => Promise<void>;
+  uiDoubleClick: (x: number, y: number) => Promise<void>;
+  uiLongClick: (x: number, y: number) => Promise<void>;
+
+  // UI模拟操作 - 滑动相关
+  uiFling: (
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    swipeVelocityPps?: number,
+    stepLength?: number,
+  ) => Promise<void>;
+  uiSwipe: (
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    swipeVelocityPps?: number,
+  ) => Promise<void>;
+  uiDrag: (
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    swipeVelocityPps?: number,
+  ) => Promise<void>;
+  uiDircFling: (
+    direction: number,
+    swipeVelocityPps?: number,
+    stepLength?: number,
+  ) => Promise<void>;
+
+  // UI模拟操作 - 文本输入
+  uiInputText: (x: number, y: number, text: string) => Promise<void>;
+  uiText: (text: string) => Promise<void>;
+
+  // UI模拟操作 - 按键事件
+  uiKeyEvent: (
+    keyId1: string | number,
+    keyId2?: string | number,
+    keyId3?: string | number,
+  ) => Promise<void>;
+  uiGoHome: () => Promise<void>;
+  uiGoBack: () => Promise<void>;
+  uiPowerKey: () => Promise<void>;
+  uiPaste: () => Promise<void>;
+
+  // 滑动方向常量
+  SwipeDirection: {
+    readonly LEFT: 0;
+    readonly RIGHT: 1;
+    readonly UP: 2;
+    readonly DOWN: 3;
+  };
 }
 // 脚本模板函数类型：接收任务和辅助工具，执行场景逻辑
 type ScriptTemplate = (

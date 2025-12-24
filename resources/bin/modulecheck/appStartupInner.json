@@ -1,0 +1,137 @@
+{
+  "title": "JSON schema for appStartup_inner.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "enum": [
+      "startupTasks",
+      "appPreloadHintStartupTasks"
+    ]
+  },
+  "properties": {
+    "startupTasks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "propertyNames": {
+          "enum": [
+            "name",
+            "srcEntry",
+            "dependencies",
+            "excludeFromAutoStart",
+            "runOnThread",
+            "waitOnMainThread"
+          ]
+        },
+        "required": [
+          "name",
+          "srcEntry",
+          "excludeFromAutoStart"
+        ],
+        "properties": {
+          "name": {
+            "description": "Indicates the name of the har/hsp startup task.",
+            "type": "string",
+            "pattern": "^[a-zA-Z][0-9a-zA-Z_.]+$",
+            "maxLength": 127
+          },
+          "srcEntry": {
+            "description": "Indicates the js code path corresponding to the har/hsp startup task.",
+            "type": "string",
+            "maxLength": 127
+          },
+          "dependencies": {
+            "description": "Indicates the dependencies of the har/hsp startup task.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "excludeFromAutoStart": {
+            "description": "Har/hsp startup task does not support automatic start, excludeFromAutoStart can only be set to true.",
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "runOnThread": {
+            "description": "Indicates the running thread of the har/hsp startup task.",
+            "type": "string",
+            "enum": [
+              "mainThread",
+              "taskPool"
+            ],
+            "default": "mainThread"
+          },
+          "waitOnMainThread": {
+            "description": "Indicates whether the har/hsp startup task block the main thread.",
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "appPreloadHintStartupTasks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "propertyNames": {
+          "enum": [
+            "name",
+            "srcEntry",
+            "dependencies",
+            "excludeFromAutoStart",
+            "runOnThread"
+          ]
+        },
+        "required": [
+          "name",
+          "srcEntry",
+          "excludeFromAutoStart",
+          "runOnThread"
+        ],
+        "properties": {
+          "name": {
+            "description": "Indicates the name of the har/hsp preload task.",
+            "type": "string",
+            "pattern": "^[a-zA-Z][0-9a-zA-Z_.]+$",
+            "maxLength": 127
+          },
+          "srcEntry": {
+            "description": "Indicates the js code path corresponding to the har/hsp preload task.",
+            "type": "string",
+            "maxLength": 127
+          },
+          "dependencies": {
+            "description": "Indicates the dependencies of the har/hsp preload task.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "excludeFromAutoStart": {
+            "description": "Har/hsp preload task does not support automatic start, excludeFromAutoStart can only be set to true.",
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "runOnThread": {
+            "description": "Indicates the running thread, preload task runs only on child thread.",
+            "type": "string",
+            "enum": [
+              "taskPool"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -26,9 +26,10 @@ import {
   Trash2,
   ListTodo,
   Archive,
+  Database,
+  Cpu,
+  FolderOpen,
 } from "lucide-react";
-
-import { TaskStatusBadge } from "./task-status-badge";
 
 interface TaskManagementProps {
   onViewTask: (task: MonitoringTask) => void;
@@ -130,6 +131,39 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
     return matchesSearch && matchesStatus;
   });
 
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "running":
+        return "bg-primary text-primary-foreground";
+      case "completed":
+        return "bg-emerald-600 text-white";
+      case "error":
+        return "bg-destructive text-destructive-foreground";
+      case "stopped":
+        return "bg-yellow-600 text-white";
+      case "pending":
+        return "bg-muted text-muted-foreground";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "running":
+        return "正在运行";
+      case "completed":
+        return "执行成功";
+      case "error":
+        return "运行异常";
+      case "stopped":
+        return "手动停止";
+      case "pending":
+        return "待运行";
+      default:
+        return "未知状态";
+    }
+  };
   return (
     <div className="flex flex-col h-full space-y-3">
       {/* 搜索和筛选 */}
@@ -159,22 +193,28 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
         </Select>
       </div>
 
-      {/* 任务列表 - 使用 ScrollArea 包装 */}
+      {/* 任务列表 */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mr-3">
           {filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className="bg-card/70 rounded-lg border border-border/30 p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-foreground truncate">
+            <div key={task.id} className="bg-card rounded-lg p-4 shadow-sm">
+              {/* Header: Title and Status with More button */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold truncate">
                     {task.name}
                   </h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {task.script}
-                  </p>
+                  <span
+                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${getStatusStyle(task.status)}`}
+                  >
+                    {getStatusLabel(task.status)}
+                  </span>
+                  {task.archived && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      <Archive className="w-3 h-3" />
+                      已归档
+                    </Badge>
+                  )}
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -183,13 +223,23 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
                       size="icon"
                       className="h-6 w-6 shrink-0"
                     >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
+                      <MoreHorizontal className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onViewTask(task)}>
                       <Eye className="h-3.5 w-3.5" />
                       查看详情
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (task.backendId) {
+                          window.api.openLogDirectory(task.backendId);
+                        }
+                      }}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      查看日志
                     </DropdownMenuItem>
                     {!task.archived && (
                       <>
@@ -208,6 +258,7 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
                             </>
                           )}
                         </DropdownMenuItem>
+
                         <DropdownMenuItem
                           onClick={() => handleArchiveTask(task.id, true)}
                         >
@@ -234,44 +285,61 @@ export function TaskManagement({ onViewTask }: TaskManagementProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-
-              <div className="flex items-center gap-1.5 mb-2">
-                <TaskStatusBadge status={task.status} />
-                {task.archived && (
-                  <Badge className="text-[10px] px-1.5 py-0 ">已归档</Badge>
-                )}
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  {task.app}
-                </Badge>
-              </div>
-
-              <div className="space-y-1 text-[10px] text-muted-foreground">
-                <div className="flex items-center justify-between">
-                  <span>创建</span>
-                  <span>{task.createdAt}</span>
-                </div>
-                {task.startTime && (
-                  <div className="flex items-center justify-between">
-                    <span>开始</span>
-                    <span>{task.startTime}</span>
+              {/* Badges row removed - moved to header */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Cpu className="w-4 h-4 text-primary" />
                   </div>
-                )}
+                  <div>
+                    <div className="text-[11px] uppercase font-bold text-muted-foreground">
+                      目标应用
+                    </div>
+                    <div className="text-xs font-medium text-foreground">
+                      {task.app}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-secondary rounded-lg">
+                    <Database className="w-4 h-4 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] uppercase font-bold text-muted-foreground">
+                      执行脚本
+                    </div>
+                    <div className="text-xs font-mono text-foreground truncate max-w-[200px]">
+                      {task.script}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-2 pt-2 border-t border-border/20 flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  数据上报
-                </span>
-                <div
-                  className={`h-1.5 w-1.5 rounded-full ${task.reportData ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
-                />
+              {/* Timestamps */}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">
+                    开始时间
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {task.createdAt ? task.createdAt : "--:--"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">
+                    完成时间
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {task.endTime ? task.endTime.split(" ")[1] : "--:--"}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
         {filteredTasks.length === 0 && (
-          <div className="rounded-md border border-dashed border-border/40 py-8 text-center">
+          <div className="rounded-md border border-dashed border-border py-8 text-center">
             <ListTodo className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">没有找到匹配的任务</p>
           </div>

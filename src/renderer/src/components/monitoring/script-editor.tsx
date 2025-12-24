@@ -19,6 +19,7 @@ import {
   FileCode,
   Eye,
   Package,
+  Code2,
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -236,14 +237,20 @@ export function ScriptMarket() {
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-sm font-semibold">
-                          {script.label}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {script.description || "暂无"}
-                        </p>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="p-2 rounded-md bg-primary/10">
+                          <Code2 className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold">
+                            {script.label}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {script.description || "暂无"}
+                          </p>
+                        </div>
                       </div>
+
                       <Badge
                         className={`text-[10px] ${getDifficultyColor(script.difficulty)}`}
                       >
@@ -401,7 +408,7 @@ export function ScriptMarket() {
       {/* 脚本预览/编辑对话框 */}
       {showPreview && selectedScript && (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-7xl max-h-[75vh] flex flex-col bg-card">
+          <DialogContent className="min-w-3xl max-h-[75vh] flex flex-col bg-card">
             <DialogHeader>
               <DialogTitle>{selectedScript.label}</DialogTitle>
               <DialogDescription>

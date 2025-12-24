@@ -175,6 +175,7 @@ interface Api {
   loadMonitoringConfig: () => Promise<MonitoringConfig>;
   saveMonitoringConfig: (config: MonitoringConfig) => Promise<{ success: boolean }>;
   resetMonitoringConfig: () => Promise<{ success: boolean }>;
+  openLogDirectory: (taskId?: string) => Promise<{ success: boolean; error?: string }>;
 
   selectDevice: (deviceKey: string | null) => Promise<{ success: boolean }>;
 

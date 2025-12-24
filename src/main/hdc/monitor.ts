@@ -1,4 +1,7 @@
 import { BrowserWindow } from "electron";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
 
 import {
   SPDaemon,
@@ -6,11 +9,19 @@ import {
   type AlertThresholds,
 } from "./sp-daemon";
 import { persistMonitorSample } from "./persistence";
+import {
+  startHiLogCapture,
+  stopHiLogCapture,
+  HiLogType,
+  HiLogLevel,
+  type HiLogCaptureConfig,
+} from "./hilog";
 
 // 监控运行时状态
 const monitoringTimers = new Map<string, NodeJS.Timeout>();
 const spDaemonInstances = new Map<string, SPDaemon>(); // 每个任务一个 SPDaemon 实例
 export const taskMetrics = new Map<string, MonitorSample[]>(); // 每个任务的监控数据历史
+const hilogTaskIds = new Map<string, string>(); // 任务ID到HiLog任务ID的映射
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -109,6 +120,8 @@ export function startMonitoring(
     interval?: number; // 采样间隔（秒），默认1秒
     thresholds?: AlertThresholds; // 告警阈值
     enableAlerts?: boolean; // 是否启用告警，默认false
+    enableHiLog?: boolean; // 是否启用HiLog采集，默认true
+    hilogConfig?: Partial<HiLogCaptureConfig>; // HiLog配置
   },
 ): void {
   if (monitoringTimers.has(task.id)) return;
@@ -116,6 +129,7 @@ export function startMonitoring(
   const interval = (config?.interval || 1) * 1000;
   const enableAlerts = config?.enableAlerts || false;
   const thresholds = config?.thresholds || {};
+  const enableHiLog = config?.enableHiLog !== false; // 默认启用
 
   // 创建或获取 SPDaemon 实例
   let spDaemon = spDaemonInstances.get(task.id);
@@ -123,6 +137,46 @@ export function startMonitoring(
     spDaemon = new SPDaemon();
     spDaemonInstances.set(task.id, spDaemon);
     spDaemon.resetNetworkStats(); // 重置网络统计
+  }
+
+  // 启动 HiLog 采集
+  if (enableHiLog) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // 使用任务ID创建独立子目录，方便管理和查看
+    const logDir = path.join(os.tmpdir(), "sparkles-logs", task.id);
+    // 确保目录存在
+    fs.mkdirSync(logDir, { recursive: true });
+
+    const logFileName = `hilog_${task.packageName}_${timestamp}.log`;
+    const logPath = path.join(logDir, logFileName);
+
+    const hilogTaskId = `hilog-${task.id}`;
+    const hilogConfig: HiLogCaptureConfig = {
+      connectKey: task.id.split("-")[0] || "default", // 从任务ID提取设备key
+      savePath: logPath,
+      type: [HiLogType.APP, HiLogType.CORE],
+      level: [HiLogLevel.DEBUG, HiLogLevel.INFO, HiLogLevel.WARN, HiLogLevel.ERROR, HiLogLevel.FATAL],
+      format: {
+        time: "time",
+        precision: "msec",
+        year: true,
+        zone: true,
+      },
+      rotation: {
+        interval: 5 * 60 * 1000, // 5 分钟
+        maxFiles: 10,            // 最多保留 10 个文件
+        compress: false,         // 不压缩（可选）
+      },
+      ...config?.hilogConfig,
+    };
+
+    const result = startHiLogCapture(hilogTaskId, hilogConfig);
+    if (result.success) {
+      hilogTaskIds.set(task.id, hilogTaskId);
+      console.log(`[Monitor] HiLog capture started for task ${task.id}, log file: ${logPath}`);
+    } else {
+      console.error(`[Monitor] Failed to start HiLog capture: ${result.message}`);
+    }
   }
 
   const timer = setInterval(async () => {
@@ -191,6 +245,19 @@ export function stopMonitoring(taskId: string): void {
     clearInterval(timer);
     monitoringTimers.delete(taskId);
   }
+
+  // 停止 HiLog 采集
+  const hilogTaskId = hilogTaskIds.get(taskId);
+  if (hilogTaskId) {
+    const result = stopHiLogCapture(hilogTaskId);
+    if (result.success) {
+      console.log(`[Monitor] HiLog capture stopped for task ${taskId}`);
+    } else {
+      console.error(`[Monitor] Failed to stop HiLog capture: ${result.message}`);
+    }
+    hilogTaskIds.delete(taskId);
+  }
+
   // 清理 SPDaemon 实例
   spDaemonInstances.delete(taskId);
 }

@@ -160,10 +160,59 @@ const installApp = async function (connectKey: string, filePath: string) {
   return await target.install(filePath);
 };
 
+import { app } from "electron";
+
+// ... existing imports ...
+
 export async function initHdcClient(win: BrowserWindow) {
   const store = getSettingsStore();
   const Settings = store.get("systemSettings");
-  const { hdcPath } = Settings;
+  let { hdcPath } = Settings;
+
+  // 尝试使用内置 HDC 的逻辑
+  if (Settings.hdcAutoDetect) {
+    const platform = process.platform;
+    const isWin = platform === "win32";
+    const executableName = isWin ? "hdc.exe" : "hdc";
+
+    if (app.isPackaged) {
+      // 生产环境: resources/bin/hdc
+      const bundledPath = path.join(
+        process.resourcesPath,
+        "bin",
+        executableName,
+      );
+      if (await fs.pathExists(bundledPath)) {
+        hdcPath = bundledPath;
+        // 确保非 Windows 平台有执行权限
+        if (!isWin) {
+          try {
+            await fs.chmod(hdcPath, 0o755);
+          } catch (err) {
+            console.error("Failed to set chmod for bundled hdc:", err);
+          }
+        }
+      }
+    } else {
+      // 开发环境: 项目根目录 resources/bin/hdc
+      // 根据您的项目结构，resources 位于根目录
+      // electron-vite build 输出在 out/main/，所以 root 在 ../../
+      const bundledPath = path.resolve(
+        __dirname,
+        "../../resources/bin",
+        executableName,
+      );
+      if (await fs.pathExists(bundledPath)) {
+        hdcPath = bundledPath;
+      }
+    }
+  } else {
+    if (hdcPath && !(await fs.pathExists(hdcPath))) {
+      log.error(`HDC path ${hdcPath} does not exist`);
+    }
+  }
+
+  log.info(`Initializing HDC client with path: ${hdcPath || "system default"}`);
 
   client = Hdc.createClient({
     bin: hdcPath,
@@ -216,6 +265,7 @@ export {
   startScreenRecording,
   stopScreenRecording,
   installApp,
+  selectedDeviceKey,
 };
 
 // 导出工作流操作类

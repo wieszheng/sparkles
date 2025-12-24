@@ -11,7 +11,26 @@ import {
   matchImage,
   matchImageTemplate,
 } from "./persistence";
-import { clickCmd, startApp, stopApp } from "./action.ts";
+import {
+  clickCmd,
+  startApp,
+  stopApp,
+  uiClick,
+  uiDoubleClick,
+  uiLongClick,
+  uiFling,
+  uiSwipe,
+  uiDrag,
+  uiDircFling,
+  uiInputText,
+  uiText,
+  uiKeyEvent,
+  uiGoHome,
+  uiGoBack,
+  uiPowerKey,
+  uiPaste,
+  SwipeDirection,
+} from "./action.ts";
 import { getDeviceKey } from "./index.ts";
 
 // 任务中止标志
@@ -217,6 +236,117 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       await stopApp(getDeviceKey()!, packageName);
       console.log("stopApp", packageName);
     },
+    // UI模拟操作 - 点击相关
+    uiClick: async (x: number, y: number) => {
+      ensureNotAborted();
+      await uiClick(getDeviceKey()!, x, y);
+      console.log("uiClick", x, y);
+    },
+    uiDoubleClick: async (x: number, y: number) => {
+      ensureNotAborted();
+      await uiDoubleClick(getDeviceKey()!, x, y);
+      console.log("uiDoubleClick", x, y);
+    },
+    uiLongClick: async (x: number, y: number) => {
+      ensureNotAborted();
+      await uiLongClick(getDeviceKey()!, x, y);
+      console.log("uiLongClick", x, y);
+    },
+    // UI模拟操作 - 滑动相关
+    uiFling: async (
+      fromX: number,
+      fromY: number,
+      toX: number,
+      toY: number,
+      swipeVelocityPps?: number,
+      stepLength?: number,
+    ) => {
+      ensureNotAborted();
+      await uiFling(
+        getDeviceKey()!,
+        fromX,
+        fromY,
+        toX,
+        toY,
+        swipeVelocityPps,
+        stepLength,
+      );
+      console.log("uiFling", fromX, fromY, toX, toY, swipeVelocityPps);
+    },
+    uiSwipe: async (
+      fromX: number,
+      fromY: number,
+      toX: number,
+      toY: number,
+      swipeVelocityPps?: number,
+    ) => {
+      ensureNotAborted();
+      await uiSwipe(getDeviceKey()!, fromX, fromY, toX, toY, swipeVelocityPps);
+      console.log("uiSwipe", fromX, fromY, toX, toY, swipeVelocityPps);
+    },
+    uiDrag: async (
+      fromX: number,
+      fromY: number,
+      toX: number,
+      toY: number,
+      swipeVelocityPps?: number,
+    ) => {
+      ensureNotAborted();
+      await uiDrag(getDeviceKey()!, fromX, fromY, toX, toY, swipeVelocityPps);
+      console.log("uiDrag", fromX, fromY, toX, toY, swipeVelocityPps);
+    },
+    uiDircFling: async (
+      direction: number,
+      swipeVelocityPps?: number,
+      stepLength?: number,
+    ) => {
+      ensureNotAborted();
+      await uiDircFling(getDeviceKey()!, direction, swipeVelocityPps, stepLength);
+      console.log("uiDircFling", direction, swipeVelocityPps, stepLength);
+    },
+    // UI模拟操作 - 文本输入
+    uiInputText: async (x: number, y: number, text: string) => {
+      ensureNotAborted();
+      await uiInputText(getDeviceKey()!, x, y, text);
+      console.log("uiInputText", x, y, text);
+    },
+    uiText: async (text: string) => {
+      ensureNotAborted();
+      await uiText(getDeviceKey()!, text);
+      console.log("uiText", text);
+    },
+    // UI模拟操作 - 按键事件
+    uiKeyEvent: async (
+      keyId1: string | number,
+      keyId2?: string | number,
+      keyId3?: string | number,
+    ) => {
+      ensureNotAborted();
+      await uiKeyEvent(getDeviceKey()!, keyId1, keyId2, keyId3);
+      console.log("uiKeyEvent", keyId1, keyId2, keyId3);
+    },
+    uiGoHome: async () => {
+      ensureNotAborted();
+      await uiGoHome(getDeviceKey()!);
+      console.log("uiGoHome");
+    },
+    uiGoBack: async () => {
+      ensureNotAborted();
+      await uiGoBack(getDeviceKey()!);
+      console.log("uiGoBack");
+    },
+    uiPowerKey: async () => {
+      ensureNotAborted();
+      await uiPowerKey(getDeviceKey()!);
+      console.log("uiPowerKey");
+    },
+    uiPaste: async () => {
+      ensureNotAborted();
+      await uiPaste(getDeviceKey()!);
+      console.log("uiPaste");
+    },
+    // 滑动方向常量
+    SwipeDirection,
   };
   console.log("runSceneScript", task);
   // 场景脚本整个执行周期内采集监控数据

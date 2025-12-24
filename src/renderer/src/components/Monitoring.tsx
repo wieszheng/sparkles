@@ -246,9 +246,9 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
         scriptTemplateId: taskData.script,
         monitorConfig: enableAlerts
           ? {
-              enableAlerts: true,
-              thresholds: alertThresholds,
-            }
+            enableAlerts: true,
+            thresholds: alertThresholds,
+          }
           : undefined,
       });
       setOpenTaskDialog(false);
@@ -407,7 +407,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
             <ComparisonAnalysis />
           </TabsContent>
 
-          <TabsContent value="config" className="mt-0 flex-1 overflow-auto">
+          <TabsContent value="config" className="mt-0 h-full">
             <MonitoringConfigPanel
               config={{
                 enableAlerts,
