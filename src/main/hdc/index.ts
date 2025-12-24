@@ -182,6 +182,7 @@ export async function initHdcClient(win: BrowserWindow) {
         "bin",
         executableName,
       );
+
       if (await fs.pathExists(bundledPath)) {
         hdcPath = bundledPath;
         // 确保非 Windows 平台有执行权限

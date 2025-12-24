@@ -67,9 +67,9 @@ export async function clickCmd(
   const client = getClient();
   assert(
     clickType === "input" ||
-    clickType === "click" ||
-    clickType === "double" ||
-    clickType === "long",
+      clickType === "click" ||
+      clickType === "double" ||
+      clickType === "long",
     "Invalid click type",
   );
   assert(position.x >= 0 && position.y >= 0, "Invalid position");
@@ -361,9 +361,7 @@ export async function uiKeyEvent(
  * UI模拟操作 - 返回主页
  * @param connectKey 设备连接键
  */
-export async function uiGoHome(
-  connectKey: string,
-): Promise<string | string[]> {
+export async function uiGoHome(connectKey: string): Promise<string | string[]> {
   return await uiKeyEvent(connectKey, "Home");
 }
 
@@ -371,9 +369,7 @@ export async function uiGoHome(
  * UI模拟操作 - 返回上一级
  * @param connectKey 设备连接键
  */
-export async function uiGoBack(
-  connectKey: string,
-): Promise<string | string[]> {
+export async function uiGoBack(connectKey: string): Promise<string | string[]> {
   return await uiKeyEvent(connectKey, "Back");
 }
 
@@ -391,9 +387,7 @@ export async function uiPowerKey(
  * UI模拟操作 - 组合键粘贴（Ctrl+V）
  * @param connectKey 设备连接键
  */
-export async function uiPaste(
-  connectKey: string,
-): Promise<string | string[]> {
+export async function uiPaste(connectKey: string): Promise<string | string[]> {
   return await uiKeyEvent(connectKey, 2072, 2038);
 }
 

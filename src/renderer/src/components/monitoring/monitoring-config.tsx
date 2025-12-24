@@ -42,7 +42,8 @@ export function MonitoringConfigPanel({
 
   // HiLog 配置
   const [enableHiLog, setEnableHiLog] = useState(true);
-  const [hilogRotationInterval, setHilogRotationInterval] = useState<string>("5");
+  const [hilogRotationInterval, setHilogRotationInterval] =
+    useState<string>("5");
   const [hilogMaxFiles, setHilogMaxFiles] = useState<string>("10");
   const [hilogCompress, setHilogCompress] = useState(false);
 
@@ -68,7 +69,7 @@ export function MonitoringConfigPanel({
         if (savedConfig.hilog) {
           setEnableHiLog(savedConfig.hilog.enabled ?? true);
           setHilogRotationInterval(
-            String(savedConfig.hilog.rotationInterval ?? 5)
+            String(savedConfig.hilog.rotationInterval ?? 5),
           );
           setHilogMaxFiles(String(savedConfig.hilog.maxFiles ?? 10));
           setHilogCompress(savedConfig.hilog.compress ?? false);
@@ -152,7 +153,9 @@ export function MonitoringConfigPanel({
               </div>
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm text-muted-foreground">采样间隔</label>
+                  <label className="text-sm text-muted-foreground">
+                    采样间隔
+                  </label>
                   <Select
                     value={interval && interval !== "" ? interval : "1"}
                     onValueChange={(value) => {
@@ -195,7 +198,9 @@ export function MonitoringConfigPanel({
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">启用告警</span>
+                  <span className="text-sm text-muted-foreground">
+                    启用告警
+                  </span>
                   <Switch
                     onClick={() =>
                       onConfigChange({
@@ -257,7 +262,10 @@ export function MonitoringConfigPanel({
                           className="p-1.5 rounded-md"
                           style={{ backgroundColor: `${item.color}15` }}
                         >
-                          <Icon className="h-4 w-4" style={{ color: item.color }} />
+                          <Icon
+                            className="h-4 w-4"
+                            style={{ color: item.color }}
+                          />
                         </div>
                         <span className="text-sm">{item.label}</span>
                       </div>
@@ -310,7 +318,9 @@ export function MonitoringConfigPanel({
                 {/* 启用 HiLog */}
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <label className="text-sm font-medium">启用 HiLog 采集</label>
+                    <label className="text-sm font-medium">
+                      启用 HiLog 采集
+                    </label>
                     <p className="text-xs text-muted-foreground">
                       自动采集应用和系统日志
                     </p>
@@ -346,10 +356,14 @@ export function MonitoringConfigPanel({
                           min="0"
                           className="w-20 h-8 text-xs text-center"
                           value={hilogRotationInterval}
-                          onChange={(e) => setHilogRotationInterval(e.target.value)}
+                          onChange={(e) =>
+                            setHilogRotationInterval(e.target.value)
+                          }
                           placeholder="5"
                         />
-                        <span className="text-xs text-muted-foreground">分钟</span>
+                        <span className="text-xs text-muted-foreground">
+                          分钟
+                        </span>
                       </div>
                     </div>
 
@@ -372,24 +386,10 @@ export function MonitoringConfigPanel({
                           onChange={(e) => setHilogMaxFiles(e.target.value)}
                           placeholder="10"
                         />
-                        <span className="text-xs text-muted-foreground">个</span>
+                        <span className="text-xs text-muted-foreground">
+                          个
+                        </span>
                       </div>
-                    </div>
-
-                    {/* 压缩选项 */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <label className="text-sm text-muted-foreground">
-                          压缩旧文件
-                        </label>
-                        <p className="text-xs text-muted-foreground">
-                          使用 gzip 压缩节省空间
-                        </p>
-                      </div>
-                      <Switch
-                        checked={hilogCompress}
-                        onCheckedChange={setHilogCompress}
-                      />
                     </div>
 
                     {/* 配置说明 */}
