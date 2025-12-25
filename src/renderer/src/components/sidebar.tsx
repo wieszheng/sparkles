@@ -9,7 +9,6 @@ import {
 import {
   LayoutDashboard,
   FolderOpen,
-  TestTube,
   FlaskConical,
   Settings,
   Zap,
@@ -23,6 +22,7 @@ import {
   Video,
   Activity,
   QrCode,
+  WalletCards,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
@@ -45,12 +45,12 @@ const menuItems = [
     page: "projects",
     badge: null,
   },
-  {
-    title: "测试用例",
-    icon: TestTube,
-    page: "test-cases",
-    badge: "12",
-  },
+  // {
+  //   title: "测试用例",
+  //   icon: TestTube,
+  //   page: "test-cases",
+  //   badge: "12",
+  // },
   // {
   //   title: "测试计划",
   //   icon: ClipboardList,
@@ -105,6 +105,12 @@ const menuItems = [
     icon: Activity,
     page: "monitoring",
     badge: null,
+  },
+  {
+    title: "Wu Kong",
+    icon: WalletCards,
+    page: "wukong",
+    badge: "NEW",
   },
   {
     title: "AI Chat",

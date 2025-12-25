@@ -57,6 +57,7 @@ import { AiTest } from "@/components/ai-test";
 import { TestCases } from "@/components/TestCase";
 import { AppStep } from "@/components/ai-test/types";
 import { FrameMark } from "@/components/frame-mark";
+import { WukongTest } from "@/components/wukong";
 
 // 定义设备类型
 interface Device {
@@ -181,6 +182,8 @@ function Main() {
             testCaseWorkflow={testCaseWorkflow}
           />
         );
+      case "wukong":
+        return <WukongTest />;
       case "screen-mirror":
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
       case "video-frame-analyzer":
@@ -215,6 +218,7 @@ function Main() {
       "ai-test": "智能生成",
       reports: "测试报告",
       automation: "自动化",
+      wukong: "WuKong",
       "video-frame-analyzer": "耗时分析",
       monitoring: "应用监控",
       "screen-mirror": "屏幕镜像",
@@ -235,6 +239,7 @@ function Main() {
       "ai-test": "智能生成测试用例",
       reports: "查看详细的测试报告和统计信息",
       automation: "配置自动化测试流程和规则",
+      wukong: "随机、专项、稳定性自动化测试",
       "video-frame-analyzer": "视频帧分析并统计耗时",
       monitoring: "用APP场景性能监控",
       "screen-mirror": "实时屏幕镜像和图像显示",
