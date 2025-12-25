@@ -62,6 +62,6 @@ publish:
 releaseInfo:
   releaseNotes: |
     本次更新:
-      重新智能生成用例
-      优化二维码生成
+      场景性能测试
+      随机稳定性测试
       修复已知问题

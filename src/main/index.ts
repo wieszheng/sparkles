@@ -37,7 +37,9 @@ function createLoadingWindow() {
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1270,
+    minWidth: 1270,
     height: 800,
+    minHeight: 800,
     show: false,
     autoHideMenuBar: true,
     center: true,

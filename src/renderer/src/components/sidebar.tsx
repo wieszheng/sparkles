@@ -22,7 +22,7 @@ import {
   Video,
   Activity,
   QrCode,
-  WalletCards,
+  Dices,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
@@ -108,7 +108,7 @@ const menuItems = [
   },
   {
     title: "Wu Kong",
-    icon: WalletCards,
+    icon: Dices,
     page: "wukong",
     badge: "NEW",
   },
