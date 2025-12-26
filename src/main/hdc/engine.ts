@@ -361,7 +361,7 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       helpers,
     );
   } finally {
-    stopMonitoring(task.id);
+    await stopMonitoring(task.id);
     taskAbortFlags.delete(task.id);
   }
 }

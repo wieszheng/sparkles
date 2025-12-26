@@ -100,7 +100,7 @@ export async function createTask(config: SceneTaskConfig): Promise<SceneTask> {
  * 删除任务（从 FastAPI 删除）
  */
 export async function removeTask(taskId: string): Promise<boolean> {
-  stopMonitoring(taskId);
+  await stopMonitoring(taskId);
   stopSceneScript(taskId);
   taskMetrics.delete(taskId);
 
@@ -189,7 +189,7 @@ export async function startTask(
         error instanceof Error ? error.message : String(error);
 
       // 停止监控和脚本执行
-      stopMonitoring(taskId);
+      await stopMonitoring(taskId);
       stopSceneScript(taskId);
 
       const t = await getTask(taskId);
@@ -239,7 +239,7 @@ export async function stopTask(
     return { success: true, message: "task already stopped" };
   }
 
-  stopMonitoring(taskId);
+  await stopMonitoring(taskId);
   stopSceneScript(taskId);
 
   // 只有在任务正在运行时才更新状态为 finished

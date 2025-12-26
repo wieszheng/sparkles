@@ -206,6 +206,34 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
     const hasRunning = backendTasks.some((t) => t.status === "running");
     if (!hasRunning) return;
 
+    // 当发现有运行中的任务时，尝试拉取其历史监控数据（防止刷新页面后丢失数据）
+    backendTasks.forEach(async (task) => {
+      if (task.status === "running") {
+        try {
+          const history = await window.api.getTaskMetrics(task.id);
+          if (history && history.length > 0) {
+            setMetricsMap((prev) => {
+              // 简单的合并策略：如果本地没有数据，直接使用历史数据
+              // 如果本地有数据，合并并去重（根据 timestamp）
+              const current = prev[task.id] ?? [];
+              if (current.length === 0) {
+                return { ...prev, [task.id]: history };
+              }
+              // 如果已经有数据，这里暂不合并，依赖实时推送即可
+              // 或者可以做一个更复杂的合并...但在高频刷新下可能影响性能
+              // 仅当本地数据远少于历史数据时补全？
+              if (history.length > current.length + 5) {
+                return { ...prev, [task.id]: history };
+              }
+              return prev;
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch task metrics:", error);
+        }
+      }
+    });
+
     const timer = setInterval(() => {
       void loadTasks();
     }, 1000);

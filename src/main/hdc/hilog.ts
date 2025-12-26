@@ -256,33 +256,28 @@ function rotateLogFile(task: HiLogCaptureTask): void {
   try {
     console.log(`[HiLog] Rotating log file for task: ${task.taskId}`);
 
-    // 关闭当前文件流
-    if (task.fileStream) {
-      task.fileStream.end();
-    }
-
-    // 可选：压缩旧文件
-    if (task.config.rotation?.compress) {
-      const currentFile = getRotatedFilePath(
-        task.baseFilePath,
-        task.currentFileIndex,
-      );
-      void compressLogFile(currentFile);
-    }
-
-    // 增加文件索引
-    task.currentFileIndex++;
+    // 保存当前文件流的引用
+    const oldFileStream = task.fileStream;
 
     // 创建新文件流
+    task.currentFileIndex++;
     const newFilePath = getRotatedFilePath(
       task.baseFilePath,
       task.currentFileIndex,
     );
-    task.fileStream = fs.createWriteStream(newFilePath, { flags: "a" });
+    const newFileStream = fs.createWriteStream(newFilePath, { flags: "a" });
 
-    // 重新连接进程输出到新文件
-    task.process.stdout?.unpipe();
-    task.process.stdout?.pipe(task.fileStream);
+    // 先切换到新流，再结束旧流
+    task.process.stdout?.unpipe(oldFileStream);
+    task.process.stdout?.pipe(newFileStream);
+
+    // 更新任务中的文件流引用
+    task.fileStream = newFileStream;
+
+    // 安全地结束旧流
+    if (!oldFileStream.writableEnded) {
+      oldFileStream.end();
+    }
 
     console.log(`[HiLog] Rotated to new log file: ${newFilePath}`);
 

@@ -1,7 +1,16 @@
 import * as os from "os";
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import log from "electron-log";
-import { getSettingsStore } from "./store";
+import {
+  loadSettings,
+  loadToolSettings,
+  saveToolSettings,
+  loadSystemSettings,
+  saveSystemSettings,
+  loadMonitoringConfig,
+  saveMonitoringConfig,
+  resetMonitoringConfig,
+} from "./store";
 import {
   getTargets,
   getWorkflowExecutor,
@@ -54,11 +63,7 @@ import {
   persistScriptTemplate,
   updateScriptTemplate,
 } from "./hdc/persistence.ts";
-import {
-  loadMonitoringConfig,
-  resetMonitoringConfig,
-  saveMonitoringConfig,
-} from "./hdc/monitoring-config.ts";
+
 
 const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
@@ -438,34 +443,24 @@ export function initIpcHandlers(): void {
   });
   // ==================== 存储相关 IPC 处理程序 ====================
   // 获取所有设置
-  ipcMain.handle("get-settings", () => getSettingsStore().get());
+  ipcMain.handle("get-settings", () => loadSettings());
   // 获取工具设置
-  ipcMain.handle("get-tool-settings", () =>
-    getSettingsStore().get("toolSettings"),
-  );
+  ipcMain.handle("get-tool-settings", () => loadToolSettings());
   // 获取系统设置
-  ipcMain.handle("get-system-settings", () =>
-    getSettingsStore().get("systemSettings"),
-  );
+  ipcMain.handle("get-system-settings", () => loadSystemSettings());
 
   // 更新工具设置
   ipcMain.handle("set-tool-settings", (_, settings) => {
-    const store = getSettingsStore();
-    const currentToolSettings = store.get("toolSettings") || {};
-    const updatedToolSettings = { ...currentToolSettings, ...settings };
-    store.set("toolSettings", updatedToolSettings);
+    const success = saveToolSettings(settings);
     log.info("[IPC 工具设置]:", settings);
-    return { success: true };
+    return { success };
   });
 
   // 更新系统设置
   ipcMain.handle("set-system-settings", (_, settings) => {
-    const store = getSettingsStore();
-    const currentSystemSettings = store.get("systemSettings") || {};
-    const updatedSystemSettings = { ...currentSystemSettings, ...settings };
-    store.set("systemSettings", updatedSystemSettings);
+    const success = saveSystemSettings(settings);
     log.info("[IPC 系统设置]:", settings);
-    return { success: true };
+    return { success };
   });
 
   // 工作流执行相关 IPC 处理程序

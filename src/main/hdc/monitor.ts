@@ -16,6 +16,7 @@ import {
   HiLogLevel,
   type HiLogCaptureConfig,
 } from "./hilog";
+import { getClient, getDeviceKey } from "./index";
 
 // 监控运行时状态
 const monitoringTimers = new Map<string, NodeJS.Timeout>();
@@ -239,7 +240,7 @@ export function startMonitoring(
 /**
  * 停止监控指定任务
  */
-export function stopMonitoring(taskId: string): void {
+export async function stopMonitoring(taskId: string): Promise<void> {
   const timer = monitoringTimers.get(taskId);
   if (timer) {
     clearInterval(timer);
@@ -260,4 +261,26 @@ export function stopMonitoring(taskId: string): void {
 
   // 清理 SPDaemon 实例
   spDaemonInstances.delete(taskId);
+
+  // 导出崩溃日志 /data/log/faultlog/faultlogger
+  const deviceKey = getDeviceKey();
+  if (deviceKey) {
+    try {
+      const client = getClient();
+      const remotePath = "/data/log/faultlog/faultlogger";
+      // 目标目录：temp/sparkles-logs/{taskId}
+      // hdc file recv 会在目标目录下创建 faultlogger 文件夹
+      const localParentDir = path.join(os.tmpdir(), "sparkles-logs", taskId);
+
+      if (!fs.existsSync(localParentDir)) {
+        fs.mkdirSync(localParentDir, { recursive: true });
+      }
+
+      console.log(`[Monitor] Exporting fault logs to ${localParentDir}...`);
+      await client.getTarget(deviceKey).recvFile(remotePath, localParentDir);
+      console.log(`[Monitor] Fault logs exported successfully.`);
+    } catch (error) {
+      console.error(`[Monitor] Failed to export fault logs:`, error);
+    }
+  }
 }
