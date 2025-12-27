@@ -27,12 +27,6 @@ interface SceneTaskConfig {
   metrics: MonitoringMetric[];
   // 脚本模板 ID，对应注册的脚本模板函数
   scriptTemplateId: string;
-  // 监控配置
-  monitorConfig?: {
-    interval?: number; // 采样间隔（秒），默认1秒
-    enableAlerts?: boolean; // 是否启用告警
-    thresholds?: AlertThresholds; // 告警阈值
-  };
 }
 
 interface SceneTask extends SceneTaskConfig {

@@ -22,20 +22,18 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-
-interface MonitoringConfigProps {
-  config: {
-    enableAlerts: boolean;
-    thresholds: AlertThresholdsConfig;
-  };
-  onConfigChange: (config: MonitoringConfigProps["config"]) => void;
-}
-
-export function MonitoringConfigPanel({
-  config,
-  onConfigChange,
-}: MonitoringConfigProps) {
-  const { enableAlerts, thresholds } = config;
+export function MonitoringConfigPanel() {
+  const [enableAlerts, setEnableAlerts] = useState(false);
+  const [thresholds, setThresholds] = useState<AlertThresholdsConfig>({
+    fpsWarning: 30,
+    fpsCritical: 15,
+    cpuWarning: 80,
+    cpuCritical: 95,
+    memoryWarning: 80,
+    memoryCritical: 95,
+    temperatureWarning: 45,
+    temperatureCritical: 55,
+  });
   const [interval, setInterval] = useState<string>("1");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,9 +41,8 @@ export function MonitoringConfigPanel({
   // HiLog 配置
   const [enableHiLog, setEnableHiLog] = useState(true);
   const [hilogRotationInterval, setHilogRotationInterval] =
-    useState<string>("5");
+    useState<string>("3");
   const [hilogMaxFiles, setHilogMaxFiles] = useState<string>("10");
-  const [hilogCompress, setHilogCompress] = useState(false);
 
   // 加载配置
   useEffect(() => {
@@ -60,10 +57,6 @@ export function MonitoringConfigPanel({
         if (savedConfig.interval) {
           setInterval(savedConfig.interval);
         }
-        onConfigChange({
-          enableAlerts: savedConfig.enableAlerts ?? false,
-          thresholds: savedConfig.thresholds ?? thresholds,
-        });
 
         // 加载 HiLog 配置
         if (savedConfig.hilog) {
@@ -72,8 +65,9 @@ export function MonitoringConfigPanel({
             String(savedConfig.hilog.rotationInterval ?? 5),
           );
           setHilogMaxFiles(String(savedConfig.hilog.maxFiles ?? 10));
-          setHilogCompress(savedConfig.hilog.compress ?? false);
         }
+        setEnableAlerts(savedConfig.enableAlerts ?? false);
+        setThresholds(savedConfig.thresholds ?? thresholds);
       }
     } catch (error) {
       console.error("加载监控配置失败:", error);
@@ -87,13 +81,13 @@ export function MonitoringConfigPanel({
       setSaving(true);
 
       const result = await window.api.saveMonitoringConfig({
-        ...config,
+        enableAlerts,
+        thresholds,
         interval,
         hilog: {
           enabled: enableHiLog,
           rotationInterval: Number(hilogRotationInterval),
           maxFiles: Number(hilogMaxFiles),
-          compress: hilogCompress,
         },
       });
       if (result.success) {
@@ -131,12 +125,9 @@ export function MonitoringConfigPanel({
     key: keyof AlertThresholdsConfig,
     value?: number,
   ) => {
-    onConfigChange({
-      ...config,
-      thresholds: {
-        ...thresholds,
-        [key]: value,
-      },
+    setThresholds({
+      ...thresholds,
+      [key]: value,
     });
   };
 
@@ -202,13 +193,8 @@ export function MonitoringConfigPanel({
                     启用告警
                   </span>
                   <Switch
-                    onClick={() =>
-                      onConfigChange({
-                        ...config,
-                        enableAlerts: !enableAlerts,
-                      })
-                    }
                     checked={enableAlerts}
+                    onCheckedChange={setEnableAlerts}
                   ></Switch>
                 </div>
                 <p className="text-xs text-muted-foreground">

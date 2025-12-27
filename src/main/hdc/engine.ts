@@ -32,6 +32,7 @@ import {
   SwipeDirection,
 } from "./action.ts";
 import { getDeviceKey } from "./index.ts";
+import { loadMonitoringConfig } from "../store.ts";
 
 // 任务中止标志
 const taskAbortFlags = new Map<string, { aborted: boolean }>();
@@ -301,7 +302,12 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
       stepLength?: number,
     ) => {
       ensureNotAborted();
-      await uiDircFling(getDeviceKey()!, direction, swipeVelocityPps, stepLength);
+      await uiDircFling(
+        getDeviceKey()!,
+        direction,
+        swipeVelocityPps,
+        stepLength,
+      );
       console.log("uiDircFling", direction, swipeVelocityPps, stepLength);
     },
     // UI模拟操作 - 文本输入
@@ -349,8 +355,14 @@ export async function runSceneScript(task: SceneTask): Promise<void> {
     SwipeDirection,
   };
   console.log("runSceneScript", task);
-  // 场景脚本整个执行周期内采集监控数据
-  startMonitoring(task, task.monitorConfig);
+  // 场景脚本整个执行周期内采集监控数据、
+  const config = loadMonitoringConfig();
+  startMonitoring(task, {
+    interval: config.interval,
+    thresholds: config.thresholds,
+    enableAlerts: config.enableAlerts,
+    hilog: config.hilog,
+  });
   await helpers.sleep(5000);
   try {
     // 动态执行脚本代码（下载到本地后执行）

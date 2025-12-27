@@ -12,8 +12,6 @@ import { persistMonitorSample } from "./persistence";
 import {
   startHiLogCapture,
   stopHiLogCapture,
-  HiLogType,
-  HiLogLevel,
   type HiLogCaptureConfig,
 } from "./hilog";
 import { getClient, getDeviceKey } from "./index";
@@ -35,7 +33,7 @@ export function setMainWindow(window: BrowserWindow | null): void {
 
 /**
  * 采集指定任务的监控指标（使用 SP_daemon）
- * 如果采集失败，回退到模拟数据
+ * 如果采集失败，回退到假数据
  */
 export async function collectMetricsForTask(
   task: SceneTask,
@@ -101,14 +99,12 @@ export async function collectMetricsForTask(
 function createFallbackMetrics(
   timestamp: number,
 ): Omit<MonitorSample, "taskId"> {
-  const fallbackCpu = 10 + Math.random() * 60;
-  const fallbackMem = 150 + Math.random() * 350;
   return {
     timestamp,
-    cpu: fallbackCpu,
-    memory: fallbackMem,
-    appCpuUsage: fallbackCpu,
-    appMemoryUsage: fallbackMem,
+    cpu: 0,
+    memory: 0,
+    appCpuUsage: 0,
+    appMemoryUsage: 0,
   };
 }
 
@@ -118,20 +114,19 @@ function createFallbackMetrics(
 export function startMonitoring(
   task: SceneTask,
   config?: {
-    interval?: number; // 采样间隔（秒），默认1秒
-    thresholds?: AlertThresholds; // 告警阈值
-    enableAlerts?: boolean; // 是否启用告警，默认false
-    enableHiLog?: boolean; // 是否启用HiLog采集，默认true
-    hilogConfig?: Partial<HiLogCaptureConfig>; // HiLog配置
+    interval: number; // 采样间隔（秒），默认1秒
+    thresholds: AlertThresholds; // 告警阈值
+    enableAlerts: boolean; // 是否启用告警，默认false
+    hilog: HiLogCaptureConfig; // HiLog配置
   },
 ): void {
+  console.log(`[Monitor] config: ${JSON.stringify(config)}`);
   if (monitoringTimers.has(task.id)) return;
 
   const interval = (config?.interval || 1) * 1000;
   const enableAlerts = config?.enableAlerts || false;
   const thresholds = config?.thresholds || {};
-  const enableHiLog = config?.enableHiLog !== false; // 默认启用
-
+  const enableHiLog = config?.hilog?.enabled !== false; // 默认启用
   // 创建或获取 SPDaemon 实例
   let spDaemon = spDaemonInstances.get(task.id);
   if (!spDaemon) {
@@ -152,31 +147,22 @@ export function startMonitoring(
     const logPath = path.join(logDir, logFileName);
 
     const hilogTaskId = `hilog-${task.id}`;
-    const hilogConfig: HiLogCaptureConfig = {
+    const hilogConfig = {
       connectKey: task.id.split("-")[0] || "default", // 从任务ID提取设备key
       savePath: logPath,
-      type: [HiLogType.APP, HiLogType.CORE],
-      level: [HiLogLevel.DEBUG, HiLogLevel.INFO, HiLogLevel.WARN, HiLogLevel.ERROR, HiLogLevel.FATAL],
-      format: {
-        time: "time",
-        precision: "msec",
-        year: true,
-        zone: true,
-      },
-      rotation: {
-        interval: 5 * 60 * 1000, // 5 分钟
-        maxFiles: 10,            // 最多保留 10 个文件
-        compress: false,         // 不压缩（可选）
-      },
-      ...config?.hilogConfig,
+      ...config?.hilog,
     };
 
     const result = startHiLogCapture(hilogTaskId, hilogConfig);
     if (result.success) {
       hilogTaskIds.set(task.id, hilogTaskId);
-      console.log(`[Monitor] HiLog capture started for task ${task.id}, log file: ${logPath}`);
+      console.log(
+        `[Monitor] HiLog capture started for task ${task.id}, log file: ${logPath}`,
+      );
     } else {
-      console.error(`[Monitor] Failed to start HiLog capture: ${result.message}`);
+      console.error(
+        `[Monitor] Failed to start HiLog capture: ${result.message}`,
+      );
     }
   }
 
@@ -254,7 +240,9 @@ export async function stopMonitoring(taskId: string): Promise<void> {
     if (result.success) {
       console.log(`[Monitor] HiLog capture stopped for task ${taskId}`);
     } else {
-      console.error(`[Monitor] Failed to stop HiLog capture: ${result.message}`);
+      console.error(
+        `[Monitor] Failed to stop HiLog capture: ${result.message}`,
+      );
     }
     hilogTaskIds.delete(taskId);
   }

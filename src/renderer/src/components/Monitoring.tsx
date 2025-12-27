@@ -58,7 +58,6 @@ function buildTaskDataFromSamples(
     network: [],
   };
 
-  console.log("metrics", metrics);
   if (!metrics || metrics.includes("cpu")) {
     result.cpu = samples.map((s) => ({
       time: toTime(s.timestamp),
@@ -113,7 +112,6 @@ function buildTaskDataFromSamples(
       };
     });
   }
-  console.log("result", result);
   return result;
 }
 
@@ -127,20 +125,6 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [selectedTask, setSelectedTask] = useState<MonitoringTask | null>(null);
 
-  const [alertThresholds, setAlertThresholds] = useState<AlertThresholdsConfig>(
-    {
-      fpsWarning: 30,
-      fpsCritical: 15,
-      cpuWarning: 80,
-      cpuCritical: 95,
-      memoryWarning: 80,
-      memoryCritical: 95,
-      temperatureWarning: 45,
-      temperatureCritical: 55,
-    },
-  );
-
-  const [enableAlerts, setEnableAlerts] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const loadTasks = async () => {
@@ -264,7 +248,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
 
     if (metricKeys.length === 0) return;
 
-    const id = `${Date.now()}`;
+    const id = `${selectedDevice}-${Date.now()}`;
     try {
       const task = await window.api.createTask({
         id,
@@ -272,13 +256,8 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
         packageName: taskData.app,
         metrics: metricKeys,
         scriptTemplateId: taskData.script,
-        monitorConfig: enableAlerts
-          ? {
-            enableAlerts: true,
-            thresholds: alertThresholds,
-          }
-          : undefined,
       });
+
       setOpenTaskDialog(false);
 
       // ✅ 关键改动：初始化新任务的空数据数组，防止图表无法展示
@@ -436,16 +415,7 @@ export function Monitoring({ selectedDevice }: { selectedDevice: string }) {
           </TabsContent>
 
           <TabsContent value="config" className="mt-0 h-full">
-            <MonitoringConfigPanel
-              config={{
-                enableAlerts,
-                thresholds: alertThresholds,
-              }}
-              onConfigChange={(cfg) => {
-                setAlertThresholds(cfg.thresholds);
-                setEnableAlerts(cfg.enableAlerts);
-              }}
-            />
+            <MonitoringConfigPanel />
           </TabsContent>
         </div>
       </Tabs>

@@ -4,25 +4,10 @@ import FileStore from "licia/FileStore";
 import { app } from "electron";
 import path from "path";
 
-const getUserDataPath = app.getPath("userData");
-const dataDir = path.join(getUserDataPath, "data");
-
-// 确保数据目录存在
-if (!fs.existsSync(dataDir)) {
-  fs.ensureDirSync(dataDir);
-}
-
-// ==================== Interfaces & Defaults ====================
-
 export interface ToolSettings {
-  screenshotFormat: string;
+  screenshotFormat: "jpeg" | "png" | "webp";
   saveLocation: string;
 }
-
-export const DEFAULT_TOOL_SETTINGS: ToolSettings = {
-  screenshotFormat: "jpeg",
-  saveLocation: "/screenshots/ss",
-};
 
 export interface SystemSettings {
   notifications: boolean;
@@ -35,7 +20,47 @@ export interface SystemSettings {
   hdcAutoDetect: boolean;
 }
 
-export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
+export interface MonitoringThresholds {
+  fpsWarning?: number;
+  fpsCritical?: number;
+  cpuWarning?: number;
+  cpuCritical?: number;
+  memoryWarning?: number;
+  memoryCritical?: number;
+  temperatureWarning?: number;
+  temperatureCritical?: number;
+}
+
+export interface HiLogCaptureConfig {
+  enabled: boolean;
+  rotationInterval?: number;
+  maxFiles?: number;
+}
+
+export interface MonitoringConfig {
+  interval: number;
+  enableAlerts: boolean;
+  thresholds: MonitoringThresholds;
+  hilog: HiLogCaptureConfig;
+}
+
+interface SettingsSchema {
+  language: string;
+  theme: string;
+  hdcPath: string;
+  toolSettings: ToolSettings;
+  systemSettings: SystemSettings;
+  monitoring: MonitoringConfig;
+}
+
+type SettingsKey = keyof SettingsSchema;
+
+export const DEFAULT_TOOL_SETTINGS: Readonly<ToolSettings> = {
+  screenshotFormat: "jpeg",
+  saveLocation: "/screenshots",
+} as const;
+
+export const DEFAULT_SYSTEM_SETTINGS: Readonly<SystemSettings> = {
   notifications: true,
   autoRun: false,
   reportEmail: "admin@example.com",
@@ -44,158 +69,158 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   retryCount: 3,
   hdcPath: "/usr/local/bin/hdc",
   hdcAutoDetect: true,
-};
+} as const;
 
-export interface MonitoringConfig {
-  interval?: string;
-  enableAlerts: boolean;
-  thresholds: {
-    fpsWarning?: number;
-    fpsCritical?: number;
-    cpuWarning?: number;
-    cpuCritical?: number;
-    memoryWarning?: number;
-    memoryCritical?: number;
-    temperatureWarning?: number;
-    temperatureCritical?: number;
-  };
-}
-
-export const DEFAULT_MONITORING_CONFIG: MonitoringConfig = {
-  interval: "1",
+export const DEFAULT_MONITORING_CONFIG: Readonly<MonitoringConfig> = {
+  interval: 1,
   enableAlerts: false,
-  thresholds: {},
-};
+  thresholds: {
+    fpsWarning: 50,
+    fpsCritical: 50,
+    cpuWarning: 50,
+    cpuCritical: 50,
+    memoryWarning: 50,
+    memoryCritical: 50,
+    temperatureWarning: 50,
+    temperatureCritical: 50,
+  },
+  hilog: {
+    enabled: true,
+    rotationInterval: 3,
+    maxFiles: 10,
+  },
+} as const;
 
-// ==================== Store Initialization ====================
+const getUserDataPath = app.getPath("userData");
+const dataDir = path.join(getUserDataPath, "data");
+
+// 确保数据目录存在
+if (!fs.existsSync(dataDir)) {
+  fs.ensureDirSync(dataDir);
+}
 
 export const getSettingsStore = memoize(function () {
   return new FileStore(path.join(dataDir, "settings.json"), {
     language: "system",
     theme: "system",
     hdcPath: "",
-    toolSettings: DEFAULT_TOOL_SETTINGS,
-    systemSettings: DEFAULT_SYSTEM_SETTINGS,
-    monitoring: DEFAULT_MONITORING_CONFIG,
+    toolSettings: { ...DEFAULT_TOOL_SETTINGS },
+    systemSettings: { ...DEFAULT_SYSTEM_SETTINGS },
+    monitoring: { ...DEFAULT_MONITORING_CONFIG },
   });
 });
 
-// ==================== Helper Functions ====================
+/**
+ * 安全地保存设置
+ */
+function saveSettings<T>(
+  key: SettingsKey,
+  settings: Partial<T>,
+  defaultSettings: T,
+): boolean {
+  try {
+    const store = getSettingsStore();
+    const current = store.get(key) ?? defaultSettings;
+    store.set(key, { ...current, ...settings });
+    return true;
+  } catch (error) {
+    console.error(`[store] Failed to save ${key}:`, error);
+    return false;
+  }
+}
+
+/**
+ * 安全地加载设置
+ */
+function loadSettingsWithDefaults<T>(key: SettingsKey, defaults: T): T {
+  try {
+    const store = getSettingsStore();
+    const config = store.get(key);
+    return config ? { ...defaults, ...config } : defaults;
+  } catch (error) {
+    console.error(`[store] Failed to load ${key}:`, error);
+    return defaults;
+  }
+}
 
 /**
  * 获取所有设置
  */
-export function loadSettings() {
-  return getSettingsStore().get();
+export function loadSettings(): SettingsSchema {
+  try {
+    return getSettingsStore().get();
+  } catch (error) {
+    console.error("[store] Failed to load all settings:", error);
+    throw error;
+  }
 }
 
 /**
  * 加载工具设置
  */
 export function loadToolSettings(): ToolSettings {
-  const store = getSettingsStore();
-  const config = store.get("toolSettings");
-  return config
-    ? { ...DEFAULT_TOOL_SETTINGS, ...config }
-    : DEFAULT_TOOL_SETTINGS;
+  const toolSettings = loadSettingsWithDefaults(
+    "toolSettings",
+    DEFAULT_TOOL_SETTINGS,
+  );
+  console.log("loadToolSettings:", toolSettings);
+  return toolSettings;
 }
 
 /**
  * 保存工具设置
  */
 export function saveToolSettings(settings: Partial<ToolSettings>): boolean {
-  try {
-    const store = getSettingsStore();
-    const current = store.get("toolSettings") || DEFAULT_TOOL_SETTINGS;
-    store.set("toolSettings", { ...current, ...settings });
-    return true;
-  } catch (error) {
-    console.error("[store] Failed to save tool settings:", error);
-    return false;
-  }
-}
-
-/**
- * 重置工具设置
- */
-export function resetToolSettings(): boolean {
-  try {
-    const store = getSettingsStore();
-    store.set("toolSettings", DEFAULT_TOOL_SETTINGS);
-    return true;
-  } catch (error) {
-    console.error("[store] Failed to reset tool settings:", error);
-    return false;
-  }
+  return saveSettings("toolSettings", settings, DEFAULT_TOOL_SETTINGS);
 }
 
 /**
  * 加载系统设置
  */
 export function loadSystemSettings(): SystemSettings {
-  const store = getSettingsStore();
-  const config = store.get("systemSettings");
-  return config
-    ? { ...DEFAULT_SYSTEM_SETTINGS, ...config }
-    : DEFAULT_SYSTEM_SETTINGS;
+  const systemSettings = loadSettingsWithDefaults(
+    "systemSettings",
+    DEFAULT_SYSTEM_SETTINGS,
+  );
+  console.log("loadSystemSettings:", systemSettings);
+  return systemSettings;
 }
 
 /**
  * 保存系统设置
  */
 export function saveSystemSettings(settings: Partial<SystemSettings>): boolean {
-  try {
-    const store = getSettingsStore();
-    const current = store.get("systemSettings") || DEFAULT_SYSTEM_SETTINGS;
-    store.set("systemSettings", { ...current, ...settings });
-    return true;
-  } catch (error) {
-    console.error("[store] Failed to save system settings:", error);
-    return false;
-  }
-}
-
-/**
- * 重置系统设置
- */
-export function resetSystemSettings(): boolean {
-  try {
-    const store = getSettingsStore();
-    store.set("systemSettings", DEFAULT_SYSTEM_SETTINGS);
-    return true;
-  } catch (error) {
-    console.error("[store] Failed to reset system settings:", error);
-    return false;
-  }
+  return saveSettings("systemSettings", settings, DEFAULT_SYSTEM_SETTINGS);
 }
 
 /**
  * 加载监控配置
  */
 export function loadMonitoringConfig(): MonitoringConfig {
-  const store = getSettingsStore();
-  const config = store.get("monitoring");
-  // 确保返回默认值，如果配置不存在
-  return config
-    ? { ...DEFAULT_MONITORING_CONFIG, ...config }
-    : DEFAULT_MONITORING_CONFIG;
+  const monitoring = loadSettingsWithDefaults(
+    "monitoring",
+    DEFAULT_MONITORING_CONFIG,
+  );
+  console.log("loadMonitoringConfig:", monitoring);
+  return monitoring;
 }
 
 /**
  * 保存监控配置
  */
-export function saveMonitoringConfig(config: MonitoringConfig): boolean {
+export function saveMonitoringConfig(
+  config: Partial<MonitoringConfig>,
+): boolean {
   try {
     const store = getSettingsStore();
-    const current = store.get("monitoring") || DEFAULT_MONITORING_CONFIG;
+    const current = store.get("monitoring") ?? DEFAULT_MONITORING_CONFIG;
 
-    // 合并配置
     const newConfig: MonitoringConfig = {
       ...current,
       ...config,
       thresholds: {
         ...current.thresholds,
-        ...(config.thresholds || {}),
+        ...(config.thresholds ?? {}),
       },
     };
 

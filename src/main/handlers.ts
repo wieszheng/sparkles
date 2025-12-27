@@ -64,7 +64,6 @@ import {
   updateScriptTemplate,
 } from "./hdc/persistence.ts";
 
-
 const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
 

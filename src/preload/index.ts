@@ -204,7 +204,8 @@ const api = {
   saveMonitoringConfig: (config: any) =>
     ipcRenderer.invoke("monitoring:config:save", config),
   resetMonitoringConfig: () => ipcRenderer.invoke("monitoring:config:reset"),
-  openLogDirectory: (taskId?: string) => ipcRenderer.invoke("open-log-directory", taskId),
+  openLogDirectory: (taskId?: string) =>
+    ipcRenderer.invoke("open-log-directory", taskId),
 
   selectDevice: (deviceKey: string | null) =>
     ipcRenderer.invoke("device:select", deviceKey),

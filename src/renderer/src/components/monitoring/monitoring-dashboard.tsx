@@ -18,7 +18,6 @@ export function MonitoringDashboard({
   onToggleTaskStatus,
 }: MonitoringDashboardProps) {
   const runningTasks = tasks.filter((t) => t.status === "running");
-  console.log("MonitoringDashboard", tasks);
 
   // useEffect(() => {}, [tasks]);
 
