@@ -257,6 +257,75 @@ const api = {
       ipcRenderer.removeListener("monitor:error", listener);
     };
   },
+
+  // Wukong 测试 API
+  listWukongTasks: () => ipcRenderer.invoke("wukong:list"),
+  getWukongTask: (taskId: string) => ipcRenderer.invoke("wukong:get", taskId),
+  createWukongTask: (payload: {
+    id: string;
+    name: string;
+    testType: WukongTestType;
+    config: WukongExecConfig | WukongSpecialConfig | WukongFocusConfig;
+  }) => ipcRenderer.invoke("wukong:create", payload),
+  removeWukongTask: (taskId: string) =>
+    ipcRenderer.invoke("wukong:remove", taskId),
+  startWukongTask: (taskId: string) =>
+    ipcRenderer.invoke("wukong:start", taskId),
+  stopWukongTask: (taskId: string) => ipcRenderer.invoke("wukong:stop", taskId),
+  onWukongOutput: (
+    handler: (data: {
+      taskId: string;
+      output: string;
+      type: "stdout" | "stderr";
+      timestamp: number;
+    }) => void,
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        taskId: string;
+        output: string;
+        type: "stdout" | "stderr";
+        timestamp: number;
+      },
+    ) => {
+      handler(data);
+    };
+    ipcRenderer.on("wukong:output", listener);
+    return () => {
+      ipcRenderer.removeListener("wukong:output", listener);
+    };
+  },
+  onWukongStatus: (
+    handler: (data: {
+      taskId: string;
+      status: "idle" | "running" | "finished" | "error";
+      timestamp: number;
+    }) => void,
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        taskId: string;
+        status: "idle" | "running" | "finished" | "error";
+        timestamp: number;
+      },
+    ) => {
+      handler(data);
+    };
+    ipcRenderer.on("wukong:status", listener);
+    return () => {
+      ipcRenderer.removeListener("wukong:status", listener);
+    };
+  },
+  openWukongTaskDirectory: (taskId: string) =>
+    ipcRenderer.invoke("wukong:openDirectory", taskId),
+  getWukongTaskMetrics: (taskId: string) =>
+    ipcRenderer.invoke("wukong:getMetrics", taskId),
+  getWukongTaskOutput: (taskId: string) =>
+    ipcRenderer.invoke("wukong:getOutput", taskId),
+  exportWukongReport: (taskId: string, targetDir?: string) =>
+    ipcRenderer.invoke("wukong:exportReport", taskId, targetDir),
 };
 
 const extendedElectronAPI = {

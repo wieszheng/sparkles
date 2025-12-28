@@ -8,7 +8,8 @@ import { initIpcHandlers } from "./handlers";
 import { setupMenu } from "./menu";
 import { destroyTray, setUpTray } from "./tray";
 
-import { setMainWindow } from "./hdc/monitor.ts";
+import { setMainWindow } from "./hdc/monitor";
+import { setMainWindowForWukong } from "./hdc/wukong";
 
 let loadingWindow: BrowserWindow | null = null;
 
@@ -56,6 +57,7 @@ function createWindow(): void {
   initHdcClient(mainWindow);
   initIpcHandlers();
   setMainWindow(mainWindow);
+  setMainWindowForWukong(mainWindow);
 
   mainWindow.on("ready-to-show", () => {
     setupMenu();

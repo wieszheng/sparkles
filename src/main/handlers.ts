@@ -63,6 +63,18 @@ import {
   persistScriptTemplate,
   updateScriptTemplate,
 } from "./hdc/persistence.ts";
+import {
+  getAllWukongTasks,
+  getWukongTask,
+  createWukongTask,
+  removeWukongTask,
+  startWukongTask,
+  stopWukongTask,
+  openTaskDirectory,
+  getTaskMetrics,
+  getTaskOutput,
+  exportWukongReport,
+} from "./hdc/wukong.ts";
 
 const BACKEND_HOST = "120.48.31.197";
 const BACKEND_PORT = 8000;
@@ -840,4 +852,84 @@ export function initIpcHandlers(): void {
     const success = resetMonitoringConfig();
     return { success };
   });
+
+  // ---- Wukong 测试 IPC ----
+
+  // 获取所有任务
+  ipcMain.handle("wukong:list", async () => {
+    return getAllWukongTasks();
+  });
+
+  // 获取单个任务
+  ipcMain.handle("wukong:get", async (_event, taskId: string) => {
+    return getWukongTask(taskId) || null;
+  });
+
+  // 创建任务
+  ipcMain.handle(
+    "wukong:create",
+    async (
+      _event,
+      payload: {
+        id: string;
+        name: string;
+        testType: WukongTestType;
+        config: WukongExecConfig | WukongSpecialConfig | WukongFocusConfig;
+        command?: string; // 前端生成的命令字符串
+        packageName?: string;
+        metrics?: string[];
+      },
+    ) => {
+      return await createWukongTask(payload);
+    },
+  );
+
+  // 删除任务
+  ipcMain.handle("wukong:remove", async (_event, taskId: string) => {
+    const success = await removeWukongTask(taskId);
+    return { success };
+  });
+
+  // 启动任务
+  ipcMain.handle("wukong:start", async (_event, taskId: string) => {
+    return await startWukongTask(taskId);
+  });
+
+  // 停止任务
+  ipcMain.handle("wukong:stop", async (_event, taskId: string) => {
+    return await stopWukongTask(taskId);
+  });
+
+  // 打开任务目录
+  ipcMain.handle("wukong:openDirectory", async (_event, taskId: string) => {
+    return await openTaskDirectory(taskId);
+  });
+
+  // 获取任务性能数据
+  ipcMain.handle("wukong:getMetrics", async (_event, taskId: string) => {
+    return await getTaskMetrics(taskId);
+  });
+
+  // 获取任务输出
+  ipcMain.handle("wukong:getOutput", async (_event, taskId: string) => {
+    return await getTaskOutput(taskId);
+  });
+
+  // 导出测试报告
+  ipcMain.handle(
+    "wukong:exportReport",
+    async (_event, taskId: string, targetDir?: string) => {
+      if (!targetDir) {
+        const result = await dialog.showOpenDialog({
+          properties: ["openDirectory"],
+          title: "选择导出目录",
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+          return { success: false, message: "未选择导出目录" };
+        }
+        targetDir = result.filePaths[0];
+      }
+      return await exportWukongReport(taskId, targetDir);
+    },
+  );
 }

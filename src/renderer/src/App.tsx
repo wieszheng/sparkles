@@ -183,7 +183,7 @@ function Main() {
           />
         );
       case "wukong":
-        return <WukongTest />;
+        return <WukongTest selectedDevice={selectedDeviceId} />;
       case "screen-mirror":
         return <ScreenMirror selectedDevice={selectedDeviceId} />;
       case "video-frame-analyzer":

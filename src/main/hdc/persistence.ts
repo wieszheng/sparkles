@@ -220,7 +220,6 @@ export async function persistTask(config: SceneTaskConfig): Promise<void> {
     packageName: config.packageName,
     scriptTemplateId: config.scriptTemplateId,
     metrics: config.metrics,
-    monitorConfig: config.monitorConfig,
   });
 }
 
@@ -235,18 +234,6 @@ export async function updateTaskStatus(
   await patchJson(`/tasks/${taskId}`, {
     status,
     errorMessage,
-  });
-}
-
-/**
- * 更新任务监控配置到 FastAPI 服务
- */
-export async function updateTaskMonitorConfig(
-  taskId: string,
-  monitorConfig: SceneTask["monitorConfig"],
-): Promise<void> {
-  await patchJson(`/tasks/${taskId}`, {
-    monitorConfig,
   });
 }
 
@@ -290,7 +277,6 @@ interface TaskOut {
   scriptTemplateId: string;
   metrics: string[];
   status: string;
-  monitorConfig?: SceneTask["monitorConfig"];
   errorMessage?: string;
   archived: boolean;
   createdAt: number;
@@ -308,7 +294,6 @@ function taskOutToSceneTask(taskOut: TaskOut): SceneTask {
     scriptTemplateId: taskOut.scriptTemplateId,
     metrics: taskOut.metrics as SceneTask["metrics"],
     status: taskOut.status as SceneTask["status"],
-    monitorConfig: taskOut.monitorConfig as SceneTask["monitorConfig"],
     createdAt: taskOut.createdAt,
     errorMessage: taskOut.errorMessage,
     archived: taskOut.archived,

@@ -183,6 +183,29 @@ interface Api {
   onMonitorData: (handler: (sample: MonitorSample) => void) => () => void;
   onMonitorAlert: (handler: (alert: MonitorAlert) => void) => () => void;
   onMonitorError: (handler: (error: { taskId?: string; error: string }) => void) => () => void;
+
+
+  // Wukong 测试 API
+  listWukongTasks: () => Promise<WukongTask[]>
+  getWukongTask: (taskId: string) => Promise<WukongTask | null>
+  createWukongTask: (payload: {
+    id: string
+    name: string
+    testType: WukongTestType
+    config: WukongExecConfig | WukongSpecialConfig | WukongFocusConfig
+    command?: string // 前端生成的命令字符串
+    packageName?: string
+    metrics?: string[]
+  }) => Promise<WukongTask>
+  removeWukongTask: (taskId: string) => Promise<{ success: boolean }>
+  startWukongTask: (taskId: string) => Promise<{ success: boolean; message?: string }>
+  stopWukongTask: (taskId: string) => Promise<{ success: boolean; message?: string }>
+  onWukongOutput: (handler: (data: { taskId: string; output: string; type: 'stdout' | 'stderr'; timestamp: number }) => void) => () => void
+  onWukongStatus: (handler: (data: { taskId: string; status: WukongTaskStatus; timestamp: number }) => void) => () => void
+  openWukongTaskDirectory: (taskId: string) => Promise<{ success: boolean; message?: string }>
+  getWukongTaskMetrics: (taskId: string) => Promise<MonitorSample[]>
+  getWukongTaskOutput: (taskId: string) => Promise<string>
+  exportWukongReport: (taskId: string, targetDir?: string) => Promise<{ success: boolean; message?: string }>
 }
 
 declare global {

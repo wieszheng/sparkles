@@ -2,7 +2,6 @@ import * as React from "react";
 import { Check, ChevronsUpDown, XCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -91,7 +90,7 @@ export function MultiSelectCombobox({
           className="w-full justify-between h-8.5 flex items-center px-3 py-2 bg-transparent border border-input rounded-md text-sm shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
           tabIndex={0}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setOpen(!open);
             }
