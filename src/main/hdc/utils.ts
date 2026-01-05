@@ -9,7 +9,7 @@ export async function shell(
   connectKey: string,
   cmd: string | string[],
 ): Promise<string | string[]> {
-  log.debug(`[Shell] cmd`, cmd);
+  log.debug("[Shell] cmd", cmd);
   const target = client.getTarget(connectKey);
   const cmds: string[] = isStr(cmd) ? [cmd] : cmd;
   const connection = await target.shell(cmds.join('\necho "echo_separator"\n'));

@@ -79,7 +79,7 @@ export async function clickCmd(
       return await shell(
         client,
         connectKey,
-        `uitest uiInput inputText ${position.x} ${position.y} ${position.text}`,
+        `uitest uiInput inputText ${position.x} ${position.y} "${position.text}"`,
       );
     case "long":
       return await shell(
@@ -308,11 +308,11 @@ export async function uiInputText(
   const client = getClient();
   assert(x >= 0 && y >= 0, "Invalid position");
   assert(text && text.length > 0, "Text cannot be empty");
-
+  console.log(`Input text: "${text}"`);
   return await shell(
     client,
     connectKey,
-    `uitest uiInput inputText ${x} ${y} ${text}`,
+    `uitest uiInput inputText ${x} ${y} "${text}"`,
   );
 }
 
@@ -328,7 +328,7 @@ export async function uiText(
   const client = getClient();
   assert(text && text.length > 0, "Text cannot be empty");
 
-  return await shell(client, connectKey, `uitest uiInput text ${text}`);
+  return await shell(client, connectKey, `uitest uiInput text "${text}"`);
 }
 
 /**

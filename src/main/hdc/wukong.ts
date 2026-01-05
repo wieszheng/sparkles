@@ -11,6 +11,8 @@ import {
 
 import type { BrowserWindow } from "electron";
 import { getClient, selectedDeviceKey } from ".";
+import { loadSystemSettings } from "../store.ts";
+import path from "path";
 
 // 任务数据目录
 const WUKONG_DATA_DIR = join(app.getPath("userData"), "wukong-tasks");
@@ -29,6 +31,19 @@ const runningTasks = new Map<
     spDaemon?: SPDaemon;
   }
 >();
+
+const settings = loadSystemSettings();
+let { hdcPath } = settings;
+if (settings.hdcAutoDetect) {
+  const platform = process.platform;
+  const isWin = platform === "win32";
+  const executableName = isWin ? "hdc.exe" : "hdc";
+  if (app.isPackaged) {
+    hdcPath = path.join(process.resourcesPath, "bin", executableName);
+  } else {
+    hdcPath = path.resolve(__dirname, "../../resources/bin", executableName);
+  }
+}
 
 // 主窗口引用
 let mainWindow: BrowserWindow | null = null;
@@ -436,9 +451,9 @@ export async function startWukongTask(
         const outputStream = await fs.open(outputFile, "w");
 
         // 使用 spawn 执行 hdc 命令
-        childProcess = spawn("hdc", hdcArgs, {
+        childProcess = spawn(hdcPath, hdcArgs, {
           stdio: ["ignore", "pipe", "pipe"],
-          shell: false,
+          shell: true,
         });
 
         runningTask.process = childProcess;
@@ -521,6 +536,7 @@ export async function startWukongTask(
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
+        console.error("[wukong] 执行命令失败:", errorMessage);
         if (!abortController.signal.aborted) {
           throw new Error(errorMessage);
         }
@@ -788,7 +804,9 @@ async function clearReportDirectories(): Promise<void> {
       }
       hdcArgs.push("shell", clearCmd);
 
-      await execAsync(`hdc ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`);
+      await execAsync(
+        `${hdcPath} ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`,
+      );
       console.log(`[wukong] 已清空报告目录: ${baseReportPath}`);
     } catch (error) {
       console.warn(`[wukong] 清空报告目录 ${baseReportPath} 失败:`, error);
@@ -828,7 +846,7 @@ export async function exportWukongReport(
       const execAsync = promisify(exec);
 
       const result = await execAsync(
-        `hdc ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`,
+        `${hdcPath} ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`,
       );
       if (result.stdout && result.stdout.trim()) {
         const foundPath = result.stdout.trim();
@@ -879,7 +897,9 @@ export async function exportWukongReport(
         }
         hdcArgs.push("file", "recv", file.remote, join(targetDir, file.local));
 
-        await execAsync(`hdc ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`);
+        await execAsync(
+          `${hdcPath} ${hdcArgs.map((arg) => `"${arg}"`).join(" ")}`,
+        );
         exportedFiles.push(file.local);
         console.log(`[wukong] 已导出: ${file.local}`);
       } catch (error) {

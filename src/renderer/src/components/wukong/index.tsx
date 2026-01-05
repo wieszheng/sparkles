@@ -789,7 +789,7 @@ export function WukongTest({ selectedDevice }: { selectedDevice: string }) {
                         const date = new Date(sample.timestamp);
                         return {
                           time: `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`,
-                          value: Number(value.toFixed(2)),
+                          value: value,
                         };
                       })
                       .filter(
