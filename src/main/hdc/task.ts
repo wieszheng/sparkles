@@ -34,11 +34,19 @@ export async function syncTasksFromFastAPI(): Promise<void> {
 export async function getAllTasks(): Promise<SceneTask[]> {
   try {
     const fetchedTasks = await fetchAllTasks();
-    // 更新内存缓存
-    tasks.clear();
+
+    // 更新内存缓存，但保留本地的 running 状态（防止 FastAPI 尚未更新）
     fetchedTasks.forEach((task) => {
+      const localTask = tasks.get(task.id);
+
+      // 如果本地已标记为 running，但远程还是 idle，说明状态同步有延迟，保留本地状态
+      if (localTask?.status === "running" && task.status === "idle") {
+        task.status = "running";
+      }
+
       tasks.set(task.id, task);
     });
+
     return fetchedTasks;
   } catch (error) {
     console.warn(

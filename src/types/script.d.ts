@@ -7,7 +7,7 @@ type MonitoringMetric =
   | "power"
   | "network";
 
-type SceneTaskStatus = "idle" | "running" | "finished" | "error";
+type SceneTaskStatus = "idle" | "running" | "finished" | "completed" | "error";
 
 interface AlertThresholds {
   fpsWarning?: number;

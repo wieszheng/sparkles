@@ -10,6 +10,7 @@ import { ResultsView } from "@/components/ai-test/results-view";
 import { Bot, Sparkles } from "lucide-react";
 import { AppStep } from "@/components/ai-test/types";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 interface AIGenerateTestCaseProps {
   onStepChange: (step: AppStep) => void;
@@ -38,7 +39,7 @@ export function AiTest({ onStepChange }: AIGenerateTestCaseProps) {
       setStep(AppStep.REVIEW);
     } catch (e) {
       console.error(e);
-
+      toast.error(`分析失败，请重试:${e}`);
       setStep(AppStep.INPUT);
     }
   };

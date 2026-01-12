@@ -1,16 +1,12 @@
-type MonitorTaskStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "stopped"
-  | "error";
+// 统一使用后端的 SceneTaskStatus
+// "idle" | "running" | "finished" | "error"
 
 interface MonitoringTask {
   id: number;
   name: string;
   script: string;
   app: string;
-  status: MonitorTaskStatus;
+  status: SceneTaskStatus;
   createdAt: string;
   deprecated: boolean;
   reportData: boolean;

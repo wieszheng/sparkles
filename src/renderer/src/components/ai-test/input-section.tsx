@@ -101,6 +101,7 @@ export function InputSection({
                 <SelectItem value="glm-4-flash">GLM-4-Flash</SelectItem>
                 <SelectItem value="glm-4">GLM-4</SelectItem>
                 <SelectItem value="glm-4-long">GLM-4-Long</SelectItem>
+                <SelectItem value="glm-4v-plus">GLM-4V-Plus</SelectItem>
               </SelectContent>
             </Select>
           </div>

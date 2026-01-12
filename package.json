@@ -1,6 +1,6 @@
 {
   "name": "sparkles",
-  "version": "1.0.8",
+  "version": "1.0.81",
   "description": "A professional UI automation testing tool for HarmonyOS devices",
   "main": "./out/main/index.js",
   "author": "wieszheng",

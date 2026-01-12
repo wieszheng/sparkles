@@ -1,7 +1,7 @@
 <div align="center" >
   <img src="resources/icon.png" alt="icon" width="120px" height="120px">
   <h1>
-    Sparkles v1.0.7 👋
+    Sparkles v1.0.8 👋
   </h1>
 </div>
 
@@ -13,6 +13,23 @@
 ![img_1.png](docs/screenshots/img_t1.png)
 
 **核心功能模块**
+
+**v1.0.8**
+
+**更新**
+
+- 实现性能监控任务
+![im.png](docs/screenshots/image_2.png)
+- wukong执行
+- 便捷二维码（用于设备数据传输）
+![im.png](docs/screenshots/image_1.png)
+
+**重构**
+
+- 智能用例生成
+![im.png](docs/screenshots/image_3.png)
+- 工具栏
+![im.png](docs/screenshots/image_4.png)
 
 **1. 工作流引擎**
 

@@ -142,14 +142,7 @@ export function ComparisonAnalysis() {
           name: t.name,
           script: t.scriptTemplateId,
           app: t.packageName,
-          status:
-            t.status === "running"
-              ? "running"
-              : t.status === "finished"
-                ? "completed"
-                : t.status === "error"
-                  ? "error"
-                  : "pending",
+          status: t.status,
           createdAt: new Date(t.createdAt).toISOString().split("T")[0],
           deprecated: false,
           reportData: true,
@@ -169,11 +162,11 @@ export function ComparisonAnalysis() {
     loadTasks();
   }, []);
 
-  // 已完成的任务
+  // 已完成的任务 (使用后端状态: finished)
   const completedTasks = useMemo(() => {
     return tasks.filter(
       (t) =>
-        (t.status === "completed" || t.status === "stopped") && t.backendId,
+        t.status === "finished" && t.backendId,
     );
   }, [tasks]);
 
@@ -244,7 +237,6 @@ export function ComparisonAnalysis() {
         data.temperature.push({ time, value: sample.deviceTemperature });
       }
       if (sample.powerConsumption != null) {
-        console.log("powerConsumption", sample.powerConsumption);
         data.power.push({ time, value: sample.powerConsumption });
       }
       if (sample.networkUpSpeed != null || sample.networkDownSpeed != null) {
@@ -253,7 +245,6 @@ export function ComparisonAnalysis() {
         data.network.push({ time, value: networkValue });
       }
     });
-    console.log("data", data);
     return data;
   };
 
@@ -302,13 +293,13 @@ export function ComparisonAnalysis() {
       const current = values[values.length - 1] || 0;
 
       // 检查指标是否真的有数据（区分"真实数据为0"和"没有数据"）
-      const hasRealData = values.some(v => v > 0) || 
-                        (key === 'cpu' && values.some(v => v >= 0)) ||
-                        (key === 'memory' && values.some(v => v >= 0)) ||
-                        (key === 'power' && values.some(v => v >= 0)) ||
-                        (key === 'temperature' && values.some(v => v > 0)) ||
-                        (key === 'fps' && values.some(v => v > 0)) ||
-                        (key === 'gpu' && values.some(v => v > 0));
+      const hasRealData = values.some(v => v > 0) ||
+        (key === 'cpu' && values.some(v => v >= 0)) ||
+        (key === 'memory' && values.some(v => v >= 0)) ||
+        (key === 'power' && values.some(v => v >= 0)) ||
+        (key === 'temperature' && values.some(v => v > 0)) ||
+        (key === 'fps' && values.some(v => v > 0)) ||
+        (key === 'gpu' && values.some(v => v > 0));
 
       // 对于网络流量，需要检查是否有真实的非零数据点
       if (!hasRealData) return;
@@ -382,10 +373,10 @@ export function ComparisonAnalysis() {
           .filter((item) => {
             // 对于某些指标，0值是有意义的，需要保留
             // 只过滤掉完全为null、undefined或NaN的情况
-            return item.value !== null && 
-                   item.value !== undefined && 
-                   !isNaN(item.value) && 
-                   item.value >= 0;
+            return item.value !== null &&
+              item.value !== undefined &&
+              !isNaN(item.value) &&
+              item.value >= 0;
           })
           .filter((item) => {
             // 进一步检查指标是否真的有数据
@@ -759,17 +750,17 @@ export function ComparisonAnalysis() {
         <tr>
           <th>任务</th>
           ${Object.keys(comparisonResult.comparison)
-            .map(
-              (metricKey) =>
-                `<th>${metricLabels[metricKey] || metricKey.toUpperCase()}</th>`,
-            )
-            .join("")}
+        .map(
+          (metricKey) =>
+            `<th>${metricLabels[metricKey] || metricKey.toUpperCase()}</th>`,
+        )
+        .join("")}
         </tr>
       </thead>
       <tbody>
         ${comparisonResult.tasks
-          .map(
-            (task) => `
+        .map(
+          (task) => `
           <tr>
             <td><strong>${task.taskName}</strong></td>
             ${Object.keys(comparisonResult.comparison)
@@ -787,19 +778,19 @@ export function ComparisonAnalysis() {
               .join("")}
           </tr>
         `,
-          )
-          .join("")}
+        )
+        .join("")}
       </tbody>
     </table>
 
     <h2>对比分析</h2>
     ${Object.keys(comparisonResult.comparison)
-      .map((metricKey, metricIndex) => {
-        const comp = comparisonResult.comparison[metricKey];
-        const metricLabel = metricLabels[metricKey] || metricKey.toUpperCase();
-        const unit = metricUnits[metricKey] || "";
+        .map((metricKey, metricIndex) => {
+          const comp = comparisonResult.comparison[metricKey];
+          const metricLabel = metricLabels[metricKey] || metricKey.toUpperCase();
+          const unit = metricUnits[metricKey] || "";
 
-        return `
+          return `
         <div class="metric-section">
           <div class="metric-title">${metricLabel}</div>
           <div class="metric-stats">
@@ -831,8 +822,8 @@ export function ComparisonAnalysis() {
           </div>
         </div>
       `;
-      })
-      .join("")}
+        })
+        .join("")}
 
     <div class="summary-section">
       <h2>报告总结</h2>
@@ -847,18 +838,18 @@ export function ComparisonAnalysis() {
         <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600; margin-top: 25px;">关键发现</h3>
         <div class="key-findings">
           ${Object.keys(comparisonResult.comparison)
-            .map((metricKey) => {
-              const comp = comparisonResult.comparison[metricKey];
-              const metricLabel =
-                metricLabels[metricKey] || metricKey.toUpperCase();
-              const unit = metricUnits[metricKey] || "";
-              const varianceRatio =
-                comp.avg > 0
-                  ? ((comp.variance / comp.avg) * 100).toFixed(1)
-                  : "0";
-              const isStable = parseFloat(varianceRatio) < 10;
+        .map((metricKey) => {
+          const comp = comparisonResult.comparison[metricKey];
+          const metricLabel =
+            metricLabels[metricKey] || metricKey.toUpperCase();
+          const unit = metricUnits[metricKey] || "";
+          const varianceRatio =
+            comp.avg > 0
+              ? ((comp.variance / comp.avg) * 100).toFixed(1)
+              : "0";
+          const isStable = parseFloat(varianceRatio) < 10;
 
-              return `
+          return `
               <div class="finding-card">
                 <div class="finding-title">${metricLabel}</div>
                 <div class="finding-content">
@@ -871,28 +862,28 @@ export function ComparisonAnalysis() {
                 </div>
               </div>
             `;
-            })
-            .join("")}
+        })
+        .join("")}
         </div>
 
         <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600; margin-top: 25px;">任务表现分析</h3>
         <div style="margin-top: 15px;">
           ${comparisonResult.tasks
-            .map((task) => {
-              const bestCount = Object.keys(comparisonResult.comparison).filter(
-                (metricKey) => {
-                  const comp = comparisonResult.comparison[metricKey];
-                  return comp.best.taskName === task.taskName;
-                },
-              ).length;
-              const worstCount = Object.keys(
-                comparisonResult.comparison,
-              ).filter((metricKey) => {
-                const comp = comparisonResult.comparison[metricKey];
-                return comp.worst.taskName === task.taskName;
-              }).length;
+        .map((task) => {
+          const bestCount = Object.keys(comparisonResult.comparison).filter(
+            (metricKey) => {
+              const comp = comparisonResult.comparison[metricKey];
+              return comp.best.taskName === task.taskName;
+            },
+          ).length;
+          const worstCount = Object.keys(
+            comparisonResult.comparison,
+          ).filter((metricKey) => {
+            const comp = comparisonResult.comparison[metricKey];
+            return comp.worst.taskName === task.taskName;
+          }).length;
 
-              return `
+          return `
               <div class="summary-item" style="margin-bottom: 10px;">
                 <strong>${task.taskName}</strong>：
                 在 ${bestCount} 个指标上表现最佳，
@@ -900,8 +891,8 @@ export function ComparisonAnalysis() {
                 ${bestCount > worstCount ? "整体表现优秀。" : bestCount < worstCount ? "需要关注性能优化。" : "表现中等。"}
               </div>
             `;
-            })
-            .join("")}
+        })
+        .join("")}
         </div>
 
         <h3 style="font-size: 16px; margin-bottom: 15px; font-weight: 600; margin-top: 25px;">建议</h3>
@@ -924,14 +915,14 @@ export function ComparisonAnalysis() {
   </div>
   <script>
     const chartConfigs = ${JSON.stringify(
-      Object.keys(comparisonResult.comparison).map((metricKey) => {
-        const chartData = prepareChartData(metricKey);
-        return {
-          labels: chartData.labels,
-          datasets: chartData.datasets,
-        };
-      }),
-    )};
+          Object.keys(comparisonResult.comparison).map((metricKey) => {
+            const chartData = prepareChartData(metricKey);
+            return {
+              labels: chartData.labels,
+              datasets: chartData.datasets,
+            };
+          }),
+        )};
     
     const metricUnits = ${JSON.stringify(metricUnits)};
     const metricKeys = ${JSON.stringify(Object.keys(comparisonResult.comparison))};
@@ -1008,7 +999,7 @@ export function ComparisonAnalysis() {
     comparisonResult.tasks.forEach((task) => {
       const stat = task.metrics[metricKey];
       if (stat) {
-        taskDataMap[task.taskName] = {
+        taskDataMap[`task_${task.taskId}`] = {
           avg: stat.avg,
           max: stat.max,
           min: stat.min,
@@ -1021,8 +1012,8 @@ export function ComparisonAnalysis() {
       {
         name: "平均值",
         ...Object.fromEntries(
-          Object.entries(taskDataMap).map(([taskName, data]) => [
-            taskName,
+          Object.entries(taskDataMap).map(([key, data]) => [
+            key,
             data.avg,
           ]),
         ),
@@ -1030,8 +1021,8 @@ export function ComparisonAnalysis() {
       {
         name: "最大值",
         ...Object.fromEntries(
-          Object.entries(taskDataMap).map(([taskName, data]) => [
-            taskName,
+          Object.entries(taskDataMap).map(([key, data]) => [
+            key,
             data.max,
           ]),
         ),
@@ -1039,8 +1030,8 @@ export function ComparisonAnalysis() {
       {
         name: "最小值",
         ...Object.fromEntries(
-          Object.entries(taskDataMap).map(([taskName, data]) => [
-            taskName,
+          Object.entries(taskDataMap).map(([key, data]) => [
+            key,
             data.min,
           ]),
         ),
@@ -1090,7 +1081,7 @@ export function ComparisonAnalysis() {
         const data = taskDataMap[task.taskId];
         if (data) {
           const point = data.find((d) => d.time === time);
-          dataPoint[task.taskName] = point?.value ?? null;
+          dataPoint[`task_${task.taskId}`] = point?.value ?? null;
         }
       });
       return dataPoint;
@@ -1292,7 +1283,7 @@ export function ComparisonAnalysis() {
 
                                         const color = `rgb(${adjustedR}, ${adjustedG}, ${adjustedB})`;
 
-                                        acc[task.taskName] = {
+                                        acc[`task_${task.taskId}`] = {
                                           label: task.taskName,
                                           color: color,
                                         };
@@ -1344,8 +1335,8 @@ export function ComparisonAnalysis() {
                                         return (
                                           <Bar
                                             key={task.taskId}
-                                            dataKey={task.taskName}
-                                            fill={`var(--color-${task.taskName})`}
+                                            dataKey={`task_${task.taskId}`}
+                                            fill={`var(--color-task_${task.taskId})`}
                                             radius={4}
                                           />
                                         );
@@ -1394,7 +1385,7 @@ export function ComparisonAnalysis() {
 
                                           const color = `rgb(${adjustedR}, ${adjustedG}, ${adjustedB})`;
 
-                                          acc[task.taskName] = {
+                                          acc[`task_${task.taskId}`] = {
                                             label: task.taskName,
                                             color: color,
                                           };
@@ -1447,9 +1438,9 @@ export function ComparisonAnalysis() {
                                           return (
                                             <Line
                                               key={task.taskId}
-                                              dataKey={task.taskName}
+                                              dataKey={`task_${task.taskId}`}
                                               type="natural"
-                                              stroke={`var(--color-${task.taskName})`}
+                                              stroke={`var(--color-task_${task.taskId})`}
                                               strokeWidth={2}
                                               dot={false}
                                               connectNulls
@@ -1471,7 +1462,7 @@ export function ComparisonAnalysis() {
                   /* 表格视图 */
                   <div className="space-y-4">
                     {comparisonResult.tasks.length > 0 &&
-                    Object.keys(comparisonResult.comparison).length > 0 ? (
+                      Object.keys(comparisonResult.comparison).length > 0 ? (
                       <>
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
