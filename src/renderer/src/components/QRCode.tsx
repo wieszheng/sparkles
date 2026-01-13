@@ -1,871 +1,665 @@
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import QRCodeLib from "qrcode";
+import { QrCode, Palette, Download, Copy, Upload, Type } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  QrCode,
-  Palette,
-  Film,
-  Upload,
-  Download,
-  RefreshCw,
-  Loader2,
-  X,
-  Sparkles,
-  Images,
-  Check,
-} from "lucide-react";
-import { toast } from "sonner";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { motion } from "framer-motion";
+import { Textarea } from "@/components/ui/textarea";
 
-type QRCodeType = "normal" | "art" | "dynamic";
-type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
+// --- Types ---
 
-interface QRCodeResult {
-  imageUrl: string; // API返回的图片URL，同时用于预览和下载
-  version: number;
-  errorLevel: ErrorCorrectionLevel;
-  type: QRCodeType;
-  objectName?: string;
-  fileSize?: number;
-}
+type ErrorLevel = "L" | "M" | "Q" | "H";
 
-interface PresetImage {
-  id: string;
-  name: string;
-  url: string;
-  type: "png" | "gif";
-  category: string;
-}
-
-const errorLevelDescriptions: Record<ErrorCorrectionLevel, string> = {
-  L: "约7%的数据恢复能力",
-  M: "约15%的数据恢复能力",
-  Q: "约25%的数据恢复能力",
-  H: "约30%的数据恢复能力",
-};
-
-// 预设图片列表 - PNG格式用于艺术二维码
-const presetPngImages: PresetImage[] = [
-  {
-    id: "png-1",
-    name: "小鸟",
-    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
-    type: "png",
-    category: "小鸟",
-  },
-  {
-    id: "png-2",
-    name: "渐变紫",
-    url: "http://82.157.176.120:9000/snicker/2024/11/22/IMG_1028.PNG",
-    type: "png",
-    category: "渐变",
-  },
-  {
-    id: "png-3",
-    name: "渐变橙",
-    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
-    type: "png",
-    category: "渐变",
-  },
-  {
-    id: "png-4",
-    name: "星空",
-    url: "http://82.157.176.120:9000/snicker/2024/11/22/1a97c7fd-a653-459f-a0c7-791c47502a7b.jpg",
-    type: "png",
-    category: "自然",
-  },
-];
-
-// 预设图片列表 - GIF格式用于动态二维码
-const presetGifImages: PresetImage[] = [
-  {
-    id: "gif-1",
-    name: "dog",
-    url: "http://82.157.176.120:9000/snicker/2024/dog.gif",
-    type: "gif",
-    category: "小狗",
-  },
-  {
-    id: "gif-2",
-    name: "dog1",
-    url: "http://82.157.176.120:9000/snicker/2024/dog1.gif",
-    type: "gif",
-    category: "小狗",
-  },
-  {
-    id: "gif-3",
-    name: "doro",
-    url: "http://82.157.176.120:9000/snicker/2024/doro.gif",
-    type: "gif",
-    category: "Doro",
-  },
-  {
-    id: "gif-4",
-    name: "a",
-    url: "http://82.157.176.120:9000/snicker/2024/a.gif",
-    type: "gif",
-    category: "Doro",
-  },
-  {
-    id: "gif-5",
-    name: "b",
-    url: "http://82.157.176.120:9000/snicker/2024/b.gif",
-    type: "gif",
-    category: "Doro",
-  },
-  {
-    id: "gif-6",
-    name: "dog3",
-    url: "http://82.157.176.120:9000/snicker/2024/ka.gif",
-    type: "gif",
-    category: "小狗",
-  },
-  {
-    id: "gif-6",
-    name: "c",
-    url: "http://82.157.176.120:9000/snicker/2024/c.gif",
-    type: "gif",
-    category: "彩虹小白马",
-  },
+const colorPresets = [
+  { name: "经典黑白", dark: "#000000", light: "#FFFFFF" },
+  { name: "科技蓝", dark: "#0066FF", light: "#E6F0FF" },
+  { name: "活力橙", dark: "#FF6B35", light: "#FFF4E6" },
+  { name: "清新绿", dark: "#00A86B", light: "#E6F7F1" },
+  { name: "优雅紫", dark: "#6B4FBB", light: "#F3EFFF" },
+  { name: "玫瑰红", dark: "#E63946", light: "#FFE5E8" },
+  { name: "深海蓝", dark: "#1A5F7A", light: "#E1F5FE" },
+  { name: "奢华金", dark: "#D4AF37", light: "#FFFBEB" },
 ];
 
 export function QRCode() {
-  // 通用状态
-  const [activeTab, setActiveTab] = useState<QRCodeType>("art");
-  const [content, setContent] = useState("");
-  const [version, setVersion] = useState(10);
-  const [errorLevel, setErrorLevel] = useState<ErrorCorrectionLevel>("H");
+  // --- State ---
+  const [content, setContent] = useState("https://example.com");
 
-  // 艺术/动态二维码额外状态
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [colorize, setColorize] = useState(true);
-  const [contrast, setContrast] = useState(1.0);
-  const [brightness, setBrightness] = useState(1.0);
+  // Settings
+  const [errorLevelValue, setErrorLevelValue] = useState(3); // 0-3: L, M, Q, H
+  const [margin, setMargin] = useState(2);
+  const [size, setSize] = useState(1024); // High res internally
 
-  // 生成状态
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<QRCodeResult | null>(null);
+  // Style Settings
+  const [qrColor, setQrColor] = useState("#000000");
+  const [qrColorEnd, setQrColorEnd] = useState<string | null>(null);
+  const [useGradient, setUseGradient] = useState(false);
+  const [gradientAngle, setGradientAngle] = useState(45);
+  const [bgColor, setBgColor] = useState("#ffffff");
 
-  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  // Logo Settings
+  const [logo, setLogo] = useState<string | null>(null);
+  const [logoSize, setLogoSize] = useState(20);
+  const [logoPadding, setLogoPadding] = useState(true);
 
-  const handleSelectPreset = (preset: PresetImage) => {
-    setSelectedPresetId(preset.id);
-    setImagePreview(preset.url);
-    setUploadedImage(null);
-    setPresetPopoverOpen(false);
-  };
+  // Output
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
 
-  const handleImageUpload = async () => {
+  // --- Auto-Generation Logic ---
+  const [debouncedContent, setDebouncedContent] = useState(content);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedContent(content), 500);
+    return () => clearTimeout(timer);
+  }, [content]);
+
+  useEffect(() => {
+    handleGenerate();
+  }, [
+    debouncedContent,
+    errorLevelValue,
+    margin,
+    size,
+    qrColor,
+    qrColorEnd,
+    useGradient,
+    gradientAngle,
+    bgColor,
+    logo,
+    logoSize,
+    logoPadding,
+  ]);
+
+  // --- Functions ---
+
+  const generateClassicQR = async () => {
     try {
-      const options = {
-        title: activeTab === "dynamic" ? "选择GIF文件" : "选择图片文件",
-        filters: [
-          {
-            name: activeTab === "dynamic" ? "GIF Files" : "Image Files",
-            extensions:
-              activeTab === "dynamic" ? ["gif"] : ["png", "jpg", "jpeg", "bmp"],
-          },
-        ],
-        properties: ["openFile" as const],
-      };
+      // Generate base QR code with black color first
+      const errorLevels: ErrorLevel[] = ["L", "M", "Q", "H"];
+      const currentErrorLevel = errorLevels[errorLevelValue];
+      const qrUrl = await QRCodeLib.toDataURL(content, {
+        errorCorrectionLevel: currentErrorLevel,
+        margin: margin,
+        width: size,
+        color: {
+          dark: "#000000",
+          light: bgColor,
+        },
+      });
 
-      const result = await window.api.openFileDialog(options);
+      return new Promise<string>((resolve, reject) => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
 
-      if (
-        result.canceled ||
-        !result.filePaths ||
-        result.filePaths.length === 0
-      ) {
-        return; // 用户取消了选择
-      }
+        canvas.width = size;
+        canvas.height = size;
 
-      const filePath = result.filePaths[0];
+        img.onload = () => {
+          if (!ctx) return;
 
-      // 使用Electron的API读取文件内容
-      const fileResult = await window.api.readFile(filePath);
+          // Draw QR code
+          ctx.drawImage(img, 0, 0);
 
-      if (!fileResult.success || !fileResult.data) {
-        toast.error("文件读取失败，请重试");
-        return;
-      }
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, size, size);
+          const data = imageData.data;
 
-      // 将数字数组转换为Blob
-      const buffer = new Uint8Array(fileResult.data);
-      const blob = new Blob([buffer], { type: fileResult.mimeType });
+          // Create gradient if enabled
+          if (useGradient && qrColorEnd) {
+            // Create gradient
+            const gradient = ctx.createLinearGradient(
+              0, 0,
+              size * Math.cos((gradientAngle * Math.PI) / 180),
+              size * Math.sin((gradientAngle * Math.PI) / 180)
+            );
+            gradient.addColorStop(0, qrColor);
+            gradient.addColorStop(1, qrColorEnd);
 
-      // 获取文件名
-      const fileName = fileResult.fileName || "";
+            // Create a temporary canvas for gradient
+            const tempCanvas = document.createElement("canvas");
+            const tempCtx = tempCanvas.getContext("2d");
+            if (!tempCtx) {
+              reject(new Error("Failed to create canvas context"));
+              return;
+            }
 
-      // 创建File对象
-      const file = new File([blob], fileName, { type: fileResult.mimeType });
+            tempCanvas.width = size;
+            tempCanvas.height = size;
 
-      // 验证文件格式
-      const validFormats =
-        activeTab === "dynamic"
-          ? ["image/gif"]
-          : ["image/png", "image/jpeg", "image/bmp"];
+            // Fill with gradient
+            tempCtx.fillStyle = gradient;
+            tempCtx.fillRect(0, 0, size, size);
 
-      if (!validFormats.includes(file.type)) {
-        toast(
-          activeTab === "dynamic"
-            ? "请上传 GIF 格式的图片"
-            : "请上传 PNG、JPG 或 BMP 格式的图片",
-        );
-        return;
-      }
+            // Get gradient data
+            const gradientData = tempCtx.getImageData(0, 0, size, size);
 
-      setUploadedImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("文件选择失败:", error);
-      toast.error("文件选择失败，请重试");
+            // Replace black pixels with gradient colors
+            for (let i = 0; i < data.length; i += 4) {
+              // Check if pixel is black (original QR code color)
+              if (data[i] < 10 && data[i + 1] < 10 && data[i + 2] < 10) {
+                data[i] = gradientData.data[i];       // R
+                data[i + 1] = gradientData.data[i + 1]; // G
+                data[i + 2] = gradientData.data[i + 2]; // B
+              }
+            }
+          } else {
+            // Use solid color
+            const r = parseInt(qrColor.slice(1, 3), 16);
+            const g = parseInt(qrColor.slice(3, 5), 16);
+            const b = parseInt(qrColor.slice(5, 7), 16);
+
+            for (let i = 0; i < data.length; i += 4) {
+              // Check if pixel is black
+              if (data[i] < 10 && data[i + 1] < 10 && data[i + 2] < 10) {
+                data[i] = r;
+                data[i + 1] = g;
+                data[i + 2] = b;
+              }
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+
+          // Draw logo on top if exists
+          if (logo) {
+            const logoImg = new Image();
+            logoImg.onload = () => {
+              const logoW = (size * logoSize) / 100;
+              const logoH =
+                (logoSize * size * (logoImg.height / logoImg.width)) / 100;
+              const x = (size - logoW) / 2;
+              const y = (size - logoH) / 2;
+
+              if (logoPadding) {
+                const padding = size * 0.015;
+                const rx = x - padding;
+                const ry = y - padding;
+                const rw = logoW + padding * 2;
+                const rh = logoH + padding * 2;
+                const radius = padding * 1.5;
+
+                ctx.fillStyle = bgColor;
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                  ctx.roundRect(rx, ry, rw, rh, radius);
+                } else {
+                  ctx.moveTo(rx + radius, ry);
+                  ctx.lineTo(rx + rw - radius, ry);
+                  ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, radius);
+                  ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, radius);
+                  ctx.arcTo(rx, ry + rh, rx, ry, radius);
+                  ctx.arcTo(rx, ry, rx + rw, ry, radius);
+                }
+                ctx.fill();
+              }
+
+              ctx.drawImage(logoImg, x, y, logoW, logoH);
+              resolve(canvas.toDataURL("image/png"));
+            };
+            logoImg.onerror = (e) => reject(e);
+            logoImg.crossOrigin = "anonymous";
+            logoImg.src = logo;
+          } else {
+            resolve(canvas.toDataURL("image/png"));
+          }
+        };
+        img.onerror = (e) => reject(e);
+        img.src = qrUrl;
+      });
+    } catch (err) {
+      console.error(err);
+      throw new Error("生成二维码失败");
     }
-  };
-
-  const clearImage = () => {
-    setUploadedImage(null);
-    setImagePreview(null);
   };
 
   const handleGenerate = async () => {
-    if (!content.trim()) {
-      toast.error("二维码内容不能为空");
-      return;
-    }
-
-    if (
-      (activeTab === "art" || activeTab === "dynamic") &&
-      !uploadedImage &&
-      !imagePreview
-    ) {
-      toast.error(
-        activeTab === "dynamic" ? "请上传 GIF 图片" : "请上传背景图片",
-      );
-      return;
-    }
-
-    setIsGenerating(true);
-
+    if (!content) return;
     try {
-      const apiUrl = "http://82.157.176.120:8000/api/v1";
-      let response: Response;
-
-      // 如果使用预设图片，需要将 URL 转换为 File 对象
-      let imageFile = uploadedImage;
-      if (
-        !uploadedImage &&
-        imagePreview &&
-        (activeTab === "art" || activeTab === "dynamic")
-      ) {
-        try {
-          const imageResponse = await fetch(imagePreview);
-          const imageBlob = await imageResponse.blob();
-          const fileName =
-            activeTab === "dynamic" ? "preset.gif" : "preset.png";
-          imageFile = new File([imageBlob], fileName, {
-            type: activeTab === "dynamic" ? "image/gif" : "image/png",
-          });
-        } catch {
-          toast.error("预设图片加载失败，请重新选择");
-          setIsGenerating(false);
-          return;
-        }
-      }
-
-      if (activeTab === "normal") {
-        // 普通二维码生成
-        response = await fetch(`${apiUrl}/simple`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            words: content,
-            version,
-            level: errorLevel,
-            contrast,
-            brightness,
-          }),
-        });
-      } else if (activeTab === "art") {
-        // 艺术二维码生成
-        const formData = new FormData();
-        formData.append("words", content);
-        formData.append("picture", imageFile!);
-        formData.append("version", version.toString());
-        formData.append("level", errorLevel);
-        formData.append("colorized", colorize.toString());
-        formData.append("contrast", contrast.toString());
-        formData.append("brightness", brightness.toString());
-
-        response = await fetch(`${apiUrl}/artistic`, {
-          method: "POST",
-          body: formData,
-        });
-      } else {
-        // 动态二维码生成
-        const formData = new FormData();
-        formData.append("words", content);
-        formData.append("gif_file", imageFile!);
-        formData.append("version", version.toString());
-        formData.append("level", errorLevel);
-        formData.append("colorized", colorize.toString());
-        formData.append("contrast", contrast.toString());
-        formData.append("brightness", brightness.toString());
-
-        response = await fetch(`${apiUrl}/animated`, {
-          method: "POST",
-          body: formData,
-        });
-      }
-
-      if (response.ok) {
-        const responseData = await response.json();
-
-        if (responseData.success) {
-          setResult({
-            imageUrl: responseData.url, // 直接使用API返回的URL
-            version: responseData.version || version,
-            errorLevel:
-              (responseData.level as ErrorCorrectionLevel) || errorLevel,
-            type: activeTab,
-            objectName: responseData.object_name,
-            fileSize: responseData.file_size,
-          });
-
-          toast.success("二维码已成功生成");
-        } else {
-          toast.error(responseData.message || "二维码生成失败");
-        }
-      } else {
-        const error = await response.json();
-        toast.error(error.message || error.detail || "二维码生成失败");
-      }
-    } catch (error) {
-      console.error("生成二维码时出错:", error);
-      toast.error("连接服务器失败，请检查后端服务是否启动");
-    } finally {
-      setIsGenerating(false);
+      const url = await generateClassicQR();
+      setGeneratedUrl(url);
+    } catch (e) {
+      console.error(e);
+      toast.error("生成失败");
     }
   };
 
-  const handleReset = () => {
-    setContent("");
-    setVersion(10);
-    setErrorLevel("H");
-    setUploadedImage(null);
-    setImagePreview(null);
-    setColorize(false);
-    setContrast(1.0);
-    setBrightness(1.0);
-    setResult(null);
+  const handleLogoUpload = async () => {
+    const result = await window.api.openFileDialog({
+      filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg"] }],
+      properties: ["openFile"],
+    });
+    if (result.canceled || result.filePaths.length === 0) return;
+
+    const path = result.filePaths[0];
+    const fileData = await window.api.readFile(path);
+    if (fileData.data) {
+      const blob = new Blob([new Uint8Array(fileData.data)], {
+        type: fileData.mimeType,
+      });
+      const url = URL.createObjectURL(blob);
+      setLogo(url);
+    }
   };
 
   const handleDownload = async () => {
-    if (!result) return;
+    if (!generatedUrl) return;
     try {
-      // 根据二维码类型确定文件扩展名和默认文件名
-      const isGif = result.type === "dynamic";
-      const fileExtension = isGif ? "gif" : "png";
-
-      // 使用API返回的objectName作为默认文件名，如果没有则使用默认格式
-      const defaultFileName = result.objectName
-        ? result.objectName.endsWith(`.${fileExtension}`)
-          ? result.objectName
-          : `${result.objectName}.${fileExtension}`
-        : `qrcode-${result.type}-${Date.now()}.${fileExtension}`;
-
       const options = {
         title: "保存二维码",
-        defaultPath: defaultFileName,
-        filters: [
-          {
-            name: isGif ? "GIF Files" : "PNG Files",
-            extensions: [fileExtension],
-          },
-        ],
+        defaultPath: `qr-${Date.now()}.png`,
+        filters: [{ name: "PNG 图片", extensions: ["png"] }],
       };
+      const saveDetails = await window.api.showSaveDialog(options);
+      if (saveDetails.canceled || !saveDetails.filePath) return;
 
-      const saveResult = await window.api.showSaveDialog(options);
-      if (saveResult.canceled || !saveResult.filePath) {
-        return; // 用户取消了保存
+      const base64Data = generatedUrl.replace(/^data:image\/\w+;base64,/, "");
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // 获取图片数据
-      const imageResponse = await fetch(result.imageUrl);
-      const blob = await imageResponse.blob();
-
-      // 转换为ArrayBuffer
-      const arrayBuffer = await blob.arrayBuffer();
-
-      // 使用Electron的API保存文件
-      await window.api.saveFile(
-        saveResult.filePath,
-        Array.from(new Uint8Array(arrayBuffer)),
-      );
-
-      toast.success("二维码保存成功");
-    } catch (error) {
-      console.error("保存失败:", error);
-      toast.error(`保存失败，请重试：${error}`);
+      await window.api.saveFile(saveDetails.filePath, Array.from(bytes));
+      toast.success("保存成功");
+    } catch (e) {
+      toast.error(`保存失败: ${e}`);
     }
   };
 
-  const isFormValid =
-    content.trim() && (activeTab === "normal" || uploadedImage || imagePreview);
+  // --- Render ---
 
-  // 渲染通用表单字段
-  const renderCommonFields = () => (
-    <div className="space-y-4">
-      {/* 输入内容 */}
-      <div className="space-y-2">
-        <Label htmlFor="content" className="text-sm font-medium">
-          输入内容 <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="content"
-          placeholder="请输入URL或文本内容"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="h-9 bg-card/50 border-border/50"
-        />
-        {content && content.startsWith("http") && (
-          <p className="text-xs text-muted-foreground">检测到URL格式</p>
-        )}
-      </div>
-
-      {/* 二维码版本和纠错级别 */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* 二维码版本 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">版本</Label>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              {version}
-            </span>
-          </div>
-          <Slider
-            value={[version]}
-            onValueChange={(v) => setVersion(v[0])}
-            min={1}
-            max={40}
-            step={1}
-            className="py-2"
-          />
-        </div>
-
-        {/* 纠错级别 */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">纠错级别</Label>
-          <RadioGroup
-            value={errorLevel}
-            onValueChange={(v) => setErrorLevel(v as ErrorCorrectionLevel)}
-            className="grid grid-cols-4 gap-1"
-          >
-            {(["L", "M", "Q", "H"] as ErrorCorrectionLevel[]).map((level) => (
-              <div key={level} className="flex items-center space-x-1">
-                <RadioGroupItem
-                  value={level}
-                  id={`level-${level}`}
-                  className="scale-88"
-                />
-                <Label
-                  htmlFor={`level-${level}`}
-                  className="text-xs cursor-pointer"
-                >
-                  {level}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        版本越高，可存储的数据量越大 | {errorLevelDescriptions[errorLevel]}
-      </p>
-    </div>
-  );
-
-  // 渲染艺术/动态二维码额外字段
-  const renderAdvancedFields = () => (
-    <div className="space-y-4">
-      {/* 图片上传 */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">
-            上传图片 <span className="text-destructive">*</span>
-          </Label>
-          <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Images className="h-3.5 w-3.5" />
-                选择素材
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-3" align="end">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    {activeTab === "dynamic" ? "GIF动图素材" : "PNG静态素材"}
+  return (
+    <div className="h-full flex flex-col">
+      {/* Main Workspace */}
+      <div className="flex-1 min-h-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="h-full flex rounded-lg overflow-hidden p-1.5"
+        >
+          {/* Left Panel: Configuration */}
+          <div className="w-[400px] flex flex-col">
+            <div className="flex-1 overflow-y-auto custom-scroll">
+              <div className="space-y-1">
+                {/* Content Section */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                    <Type className="w-4 h-4" />
+                    二维码内容
+                  </Label>
+                  <Textarea
+                    placeholder="请输入链接或文本..."
+                    className="min-h-[100px] resize-none border-border/60 focus:border-primary/50 bg-background/50 transition-all font-mono text-sm leading-relaxed"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground flex justify-end">
+                    {content.length} 个字符
                   </p>
                 </div>
 
-                {/* 按分类分组展示 */}
-                {(() => {
-                  const images =
-                    activeTab === "dynamic" ? presetGifImages : presetPngImages;
-                  const categories = [
-                    ...new Set(images.map((img) => img.category)),
-                  ];
-                  return (
-                    <div className="space-y-2 max-h-64 overflow-y-auto px-2">
-                      {categories.map((category) => (
-                        <div key={category} className="space-y-1.5">
-                          <p className="text-xs text-muted-foreground font-medium">
-                            {category}
-                          </p>
-                          <div className="flex gap-2 flex-wrap">
-                            {images
-                              .filter((img) => img.category === category)
-                              .map((preset) => (
-                                <div
-                                  key={preset.id}
-                                  className={`
-                                    relative cursor-pointer rounded-md overflow-hidden transition-all
-                                    w-12 h-12 flex-shrink-0
-                                    ring-1 ring-border/50 hover:ring-primary/50 hover:shadow-sm
-                                    ${selectedPresetId === preset.id ? "ring-2 ring-primary shadow-md" : ""}
-                                  `}
-                                  onClick={() => handleSelectPreset(preset)}
-                                  title={preset.name}
-                                >
-                                  <img
-                                    src={preset.url || "/placeholder.svg"}
-                                    alt={preset.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                  {selectedPresetId === preset.id && (
-                                    <div className="absolute top-0.5 right-0.5 bg-primary rounded-full p-0.5">
-                                      <Check className="h-2.5 w-2.5 text-primary-foreground" />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                {/* Style Section */}
+                <div className="space-y-4">
+                  <Label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                    <Palette className="w-4 h-4" />
+                    样式
+                  </Label>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs text-muted-foreground">
+                      颜色预设
+                    </Label>
+                    <div className="grid grid-cols-7 gap-2">
+                      {colorPresets.map((preset) => (
+                        <div
+                          key={preset.name}
+                          onClick={() => {
+                            setQrColor(preset.dark);
+                            setBgColor(preset.light);
+                          }}
+                          className="group cursor-pointer flex flex-col items-center gap-2"
+                          title={preset.name}
+                        >
+                          <div
+                            className={cn(
+                              "w-full aspect-square rounded-lg border border-border/50 overflow-hidden relative shadow-sm transition-all hover:scale-105 hover:shadow-md",
+                              qrColor === preset.dark &&
+                                bgColor === preset.light
+                                ? "ring-2 ring-primary ring-offset-2"
+                                : "",
+                            )}
+                          >
+                            <div
+                              className="absolute inset-0"
+                              style={{ backgroundColor: preset.light }}
+                            />
+                            <div
+                              className="absolute inset-[25%]"
+                              style={{
+                                backgroundColor: preset.dark,
+                                borderRadius: "4px",
+                              }}
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
-                  );
-                })()}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div
-          className={`
-            relative border-2 border-dashed rounded-lg p-3 transition-colors
-            ${imagePreview ? "border-primary/50 " : "border-border hover:border-primary/30"}
-          `}
-        >
-          {imagePreview ? (
-            <div className="relative">
-              <img
-                src={imagePreview || "/placeholder.svg"}
-                alt="预览"
-                className="max-h-30 mx-auto rounded object-contain"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full text-destructive-foreground hover:bg-destructive/90"
-                onClick={clearImage}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                {uploadedImage?.name}
-              </p>
-            </div>
-          ) : (
-            <div
-              className="flex flex-col  items-center justify-center py-4 cursor-pointer"
-              onClick={handleImageUpload}
-            >
-              <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">点击选择图片</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {activeTab === "dynamic"
-                  ? "支持 GIF 格式"
-                  : "支持 PNG、JPG、BMP 格式"}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 彩色化 */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="colorize"
-          checked={colorize}
-          onCheckedChange={(checked) => setColorize(checked as boolean)}
-        />
-        <Label htmlFor="colorize" className="text-sm cursor-pointer">
-          彩色化
-        </Label>
-      </div>
-
-      {/* 对比度和亮度 */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* 对比度 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">对比度</Label>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              {contrast.toFixed(1)}
-            </span>
-          </div>
-          <Slider
-            value={[contrast]}
-            onValueChange={(v) => setContrast(v[0])}
-            min={0.1}
-            max={3.0}
-            step={0.1}
-            className="py-2"
-          />
-        </div>
-
-        {/* 亮度 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">亮度</Label>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              {brightness.toFixed(1)}
-            </span>
-          </div>
-          <Slider
-            value={[brightness]}
-            onValueChange={(v) => setBrightness(v[0])}
-            min={0.1}
-            max={3.0}
-            step={0.1}
-            className="py-2"
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="h-full flex gap-3 p-1.5 bg-card rounded-lg"
-    >
-      {/* 左侧 - 内容配置区 */}
-      <div className="flex-1 flex flex-col bg-card backdrop-blur-sm">
-        {/* 左侧头部 */}
-        <div className="flex-shrink-0 px-4 py-2">
-          <p className="text-xs text-muted-foreground mt-1">
-            快来尝试创建普通、艺术或动态二维码
-          </p>
-        </div>
-
-        {/* 左侧内容 */}
-        <div className="flex-1 overflow-auto px-3.5">
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => {
-              setActiveTab(v as QRCodeType);
-              clearImage();
-              setResult(null);
-            }}
-          >
-            <TabsList className="w-2/4 mb-1">
-              <TabsTrigger
-                value="normal"
-                className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                <QrCode className="h-3.5 w-3.5" />
-                普通
-              </TabsTrigger>
-              <TabsTrigger
-                value="art"
-                className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                <Palette className="h-3.5 w-3.5" />
-                艺术
-              </TabsTrigger>
-              <TabsTrigger
-                value="dynamic"
-                className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                <Film className="h-3.5 w-3.5" />
-                动态
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="normal" className="space-y-4 mt-0">
-              {renderCommonFields()}
-            </TabsContent>
-
-            <TabsContent value="art" className="space-y-4 mt-0">
-              {renderCommonFields()}
-              {renderAdvancedFields()}
-            </TabsContent>
-
-            <TabsContent value="dynamic" className="space-y-4 mt-0">
-              {renderCommonFields()}
-              {renderAdvancedFields()}
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* 底部固定操作按钮 */}
-        <div className="flex-shrink-0 px-4 py-3">
-          <div className="flex justify-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              disabled={isGenerating}
-            >
-              <RefreshCw className="h-4 w-4" />
-              重置
-            </Button>
-            <Button
-              size="sm"
-              disabled={!isFormValid || isGenerating}
-              onClick={handleGenerate}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  生成二维码
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 右侧 - 预览区 */}
-      <div className="w-[360px] flex flex-col">
-        {/* 右侧头部 */}
-        {/*<div className="flex-shrink-0 px-3 py-3">*/}
-        {/*  <h2 className="text-sm font-semibold flex items-center gap-2">*/}
-        {/*    <ImageIcon className="h-4 w-4" />*/}
-        {/*    预览*/}
-        {/*  </h2>*/}
-        {/*  <p className="text-xs text-muted-foreground mt-1">查看生成的二维码</p>*/}
-        {/*</div>*/}
-
-        {/* 右侧内容 */}
-        <motion.div
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex-1 overflow-auto p-5 flex flex-col"
-        >
-          {result ? (
-            <div className="flex-1 flex flex-col">
-              {/* 二维码预览 */}
-              <div className="flex-1 flex items-center justify-center">
-                <div className="bg-white p-1 rounded-xl shadow-lg">
-                  <img
-                    src={result.imageUrl || "/placeholder.svg"}
-                    alt="生成的二维码"
-                    className="w-60 h-60 object-contain"
-                  />
-                </div>
-              </div>
-
-              {/* 参数信息 */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
-                  <p className="text-xs text-muted-foreground mb-1">类型</p>
-                  <p className="text-sm font-medium">
-                    {result.type === "normal"
-                      ? "普通"
-                      : result.type === "art"
-                        ? "艺术"
-                        : "动态"}
-                  </p>
-                </div>
-                <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
-                  <p className="text-xs text-muted-foreground mb-1">版本</p>
-                  <p className="text-sm font-medium">{result.version}</p>
-                </div>
-              </div>
-
-              {/* 第二行信息 */}
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
-                  <p className="text-xs text-muted-foreground mb-1">纠错级别</p>
-                  <p className="text-sm font-medium">{result.errorLevel}</p>
-                </div>
-                {result.fileSize && (
-                  <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/30">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      文件大小
-                    </p>
-                    <p className="text-sm font-medium">
-                      {result.fileSize < 1024
-                        ? `${result.fileSize} B`
-                        : result.fileSize < 1024 * 1024
-                          ? `${(result.fileSize / 1024).toFixed(1)} KB`
-                          : `${(result.fileSize / (1024 * 1024)).toFixed(1)} MB`}
-                    </p>
                   </div>
-                )}
-              </div>
 
-              {/* 下载按钮 */}
-              <Button size="sm" className="mt-4" onClick={handleDownload}>
-                <Download className="h-4 w-4" />
-                下载二维码
-              </Button>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="w-32 h-32 rounded-2xl bg-muted/30 border-2 border-dashed border-border/50 flex items-center justify-center mb-4">
-                <QrCode className="h-12 w-12 text-muted-foreground/50" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">
+                        前色与背景色
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">渐变</span>
+                        <button
+                          onClick={() => setUseGradient(!useGradient)}
+                          className={cn(
+                            "w-8 h-4 rounded-full transition-colors relative",
+                            useGradient ? "bg-primary" : "bg-muted"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+                              useGradient ? "left-4.5" : "left-0.5"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {useGradient ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                                起始色
+                              </span>
+                              <div className="flex gap-2 items-center bg-muted/30 p-1.5 rounded-lg border border-border/50">
+                                <input
+                                  type="color"
+                                  value={qrColor}
+                                  onChange={(e) => setQrColor(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 overflow-hidden ring-1 ring-border/20"
+                                />
+                                <span className="text-xs font-mono text-foreground/80">
+                                  {qrColor}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                                结束色
+                              </span>
+                              <div className="flex gap-2 items-center bg-muted/30 p-1.5 rounded-lg border border-border/50">
+                                <input
+                                  type="color"
+                                  value={qrColorEnd || qrColor}
+                                  onChange={(e) => setQrColorEnd(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 overflow-hidden ring-1 ring-border/20"
+                                />
+                                <span className="text-xs font-mono text-foreground/80">
+                                  {qrColorEnd || qrColor}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-1">
+                            <Label className="text-[10px] uppercase text-muted-foreground">
+                              渐变角度
+                            </Label>
+                            <span className="text-xs text-muted-foreground">
+                              {gradientAngle}°
+                            </span>
+                          </div>
+                          <Slider
+                            value={[gradientAngle]}
+                            min={0}
+                            max={360}
+                            step={15}
+                            onValueChange={(v) => setGradientAngle(v[0])}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-4">
+                            <div className="flex flex-col gap-1.5 flex-1">
+                              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                                前景色
+                              </span>
+                              <div className="flex gap-2 items-center bg-muted/30 p-1.5 rounded-lg border border-border/50">
+                                <input
+                                  type="color"
+                                  value={qrColor}
+                                  onChange={(e) => setQrColor(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 overflow-hidden ring-1 ring-border/20"
+                                />
+                                <span className="text-xs font-mono text-foreground/80">
+                                  {qrColor}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 flex-1">
+                              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                                背景色
+                              </span>
+                              <div className="flex gap-2 items-center bg-muted/30 p-1.5 rounded-lg border border-border/50">
+                                <input
+                                  type="color"
+                                  value={bgColor}
+                                  onChange={(e) => setBgColor(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 overflow-hidden ring-1 ring-border/20"
+                                />
+                                <span className="text-xs font-mono text-foreground/80">
+                                  {bgColor}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs text-muted-foreground flex justify-between">
+                      <span>Logo</span>
+                      {logo && (
+                        <span
+                          className="text-primary cursor-pointer hover:underline"
+                          onClick={() => setLogo(null)}
+                        >
+                          移除
+                        </span>
+                      )}
+                    </Label>
+
+                    {!logo ? (
+                      <div
+                        onClick={handleLogoUpload}
+                        className="h-20 border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-muted/30 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all group"
+                      >
+                        <Upload className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary/70 mb-1" />
+                        <span className="text-[10px] text-muted-foreground">
+                          上传 Logo
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-4 items-center">
+                        <div className="w-18 h-18 rounded-xl border border-border/50 p-2 flex items-center justify-center bg-muted/20 relative group overflow-hidden">
+                          <img
+                            src={logo}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                          <div
+                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            onClick={handleLogoUpload}
+                          >
+                            <span className="text-xs text-white font-medium">
+                              更换
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-[10px] uppercase text-muted-foreground">
+                              尺寸
+                            </Label>
+                            <span className="text-xs text-muted-foreground">
+                              {logoSize}%
+                            </span>
+                          </div>
+                          <Slider
+                            value={[logoSize]}
+                            min={5}
+                            max={40}
+                            step={1}
+                            onValueChange={(v) => setLogoSize(v[0])}
+                          />
+                          <div className="flex items-center gap-2 pt-1">
+                            <input
+                              type="checkbox"
+                              id="logo-padding"
+                              checked={logoPadding}
+                              onChange={(e) =>
+                                setLogoPadding(e.target.checked)
+                              }
+                              className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary/50"
+                            />
+                            <label
+                              htmlFor="logo-padding"
+                              className="text-xs text-muted-foreground cursor-pointer select-none"
+                            >
+                              Logo 区域挖空
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <h3 className="text-sm font-medium text-muted-foreground">
-                暂无二维码
-              </h3>
-              <p className="text-xs text-muted-foreground/70 mt-1 max-w-[200px]">
-                请在左侧配置内容和参数后，点击生成按钮
-              </p>
             </div>
-          )}
+          </div>
+
+          {/* Right Panel: Preview */}
+          <div className="flex-1 min-w-0 flex flex-col relative">
+            {generatedUrl ? (
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-center p-10">
+                  {/* Preview Card */}
+                  <motion.div layoutId="preview-card" className="relative group">
+                    <div className="absolute -inset-4 bg-gradient-to-tr from-primary/30 to-purple-500/30 rounded-2xl blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                    <div className="relative bg-white p-4 rounded-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                      <img
+                        src={generatedUrl}
+                        className="w-[300px] h-[300px] object-contain rounded-sm"
+                      />
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Settings Panel */}
+                <div className="p-5">
+                  <div className="max-w-lg mx-auto space-y-4">
+                    <Label className="text-sm font-semibold text-foreground/80">
+                      设置
+                    </Label>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-xs">容错率</Label>
+                          <span className="text-[10px] text-muted-foreground">
+                            {["L (7%)", "M (15%)", "Q (25%)", "H (30%)"][errorLevelValue]}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[errorLevelValue]}
+                          min={0}
+                          max={3}
+                          step={1}
+                          onValueChange={(v) => setErrorLevelValue(v[0])}
+                          className="py-1"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-xs">边距</Label>
+                          <span className="text-[10px] text-muted-foreground">{margin}px</span>
+                        </div>
+                        <Slider
+                          value={[margin]}
+                          min={0}
+                          max={10}
+                          step={1}
+                          onValueChange={(v) => setMargin(v[0])}
+                          className="py-1"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-xs">输出尺寸</Label>
+                          <span className="text-[10px] text-muted-foreground">{size}px</span>
+                        </div>
+                        <Slider
+                          value={[size]}
+                          min={200}
+                          max={2000}
+                          step={100}
+                          onValueChange={(v) => setSize(v[0])}
+                          className="py-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-center gap-3 mt-4 pt-4 border-t border-border/40">
+                    <Button
+                      variant="outline"
+                      onClick={handleDownload}
+                    >
+                      <Download className="w-4 h-4" /> 保存图片
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        navigator.clipboard.writeText(content);
+                        toast.success("内容已复制到剪贴板");
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40 gap-4">
+                <div className="p-6 rounded-full bg-muted/30">
+                  <QrCode className="w-12 h-12" />
+                </div>
+                <p className="font-medium">输入内容自动生成...</p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
-    </motion.div>
+    </div>
   );
 }
